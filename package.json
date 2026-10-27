@@ -1,0 +1,24 @@
+{
+  "name": "opd-saathi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev -w server\" \"npm:dev -w client\"",
+    "build": "npm run build -w client",
+    "start": "npm start -w server",
+    "check": "node scripts/check.js",
+    "staff:reset": "npm run staff:reset -w server --",
+    "dev:phone": "concurrently -n server,client -c blue,green \"npm:dev -w server\" \"npm:dev:phone -w client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

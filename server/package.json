@@ -1,0 +1,17 @@
+{
+  "name": "opd-saathi-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "staff:reset": "node --env-file-if-exists=.env src/cli.js reset-password"
+  },
+  "dependencies": {
+    "@google/genai": "^2.31.0",
+    "express": "^5.3.0",
+    "mongoose": "^9.11.4",
+    "web-push": "^3.6.7"
+  }
+}

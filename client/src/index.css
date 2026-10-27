@@ -1,0 +1,369 @@
+@import 'tailwindcss';
+
+/* Design tokens. Every colour in the app comes from here, so high-contrast
+   mode only has to swap these values. Text pairs meet WCAG AA.
+   Ward green (hospital signboards) is the brand; slip yellow is used only for
+   the token ticket; red only for Emergency. */
+@theme {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', 'Kohinoor Devanagari', Mangal, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Noto Sans Mono', monospace;
+
+  /* A calmer type scale (minor third) on a 16px base. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.35;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.4;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.1875rem;
+  --text-xl--line-height: 1.35;
+  --text-2xl: 1.4375rem;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 2.125rem;
+  --text-4xl--line-height: 1.1;
+  --text-5xl: 2.75rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.25rem;
+  --text-6xl--line-height: 1;
+
+  --color-page: #eef3f1;
+  --color-card: #ffffff;
+  --color-ink: #17212b;
+  --color-ink-2: #56616b;
+  --color-line: #d5deda;
+  --color-brand: #0b6b4f;
+  --color-brand-ink: #ffffff;
+  --color-brand-soft: #e1f0ea;
+  --color-slip: #fff3b8;
+  --color-slip-edge: #d9c467;
+  --color-danger: #c62828;
+  --color-danger-ink: #ffffff;
+  --color-danger-soft: #fdecec;
+  --color-warn: #f2b01e;
+  --color-warn-ink: #17212b;
+  --color-warn-soft: #fff6da;
+  --color-ok: #1e7b45;
+  --color-ok-ink: #ffffff;
+  --color-ok-soft: #e5f3ea;
+  --color-focus: #1f5fd1;
+  --color-good: #0ca30c;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  /* Floor plans and charts */
+  --color-route: #1f5fd1;
+  --color-series: #2a78d6;
+  --color-grid: #e1e0d9;
+  --color-plan-corridor: #e9e7df;
+  --color-plan-grey: #e4e6e9;
+  --color-plan-water: #d9eafb;
+  --color-plan-wait: #cfe3fa;
+  --color-plan-ramp: #efe7d6;
+}
+
+html.hc {
+  --color-page: #000000;
+  --color-card: #000000;
+  --color-ink: #ffffff;
+  --color-ink-2: #ffffff;
+  --color-line: #ffffff;
+  --color-brand: #ffe14d;
+  --color-brand-ink: #000000;
+  --color-brand-soft: #262100;
+  --color-slip: #000000;
+  --color-slip-edge: #ffe14d;
+  --color-danger: #ff6b6b;
+  --color-danger-ink: #000000;
+  --color-danger-soft: #2b0000;
+  --color-warn: #ffe14d;
+  --color-warn-ink: #000000;
+  --color-warn-soft: #262100;
+  --color-ok: #7dff9b;
+  --color-ok-ink: #000000;
+  --color-ok-soft: #00260b;
+  --color-focus: #00e5ff;
+  --color-route: #00e5ff;
+  --color-series: #ffe14d;
+  --color-grid: #555555;
+  --color-plan-corridor: #262626;
+  --color-plan-grey: #000000;
+  --color-plan-water: #000000;
+  --color-plan-wait: #000000;
+  --color-plan-ramp: #000000;
+}
+
+/* Base styles live in the base layer so Tailwind utilities can override them. */
+@layer base {
+  /* Text size: 16px by default; Large and Largest in Settings. Assisted
+     mode ("Someone is helping me") adds one step. Staff screens are denser. */
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  html.ts-1 {
+    font-size: 18px;
+  }
+  html.ts-2 {
+    font-size: 20px;
+  }
+  html.staff {
+    font-size: 15px;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    overflow-wrap: break-word;
+  }
+
+  :focus-visible {
+    outline: 4px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  /* Headings get focus from code (for screen readers), not from the keyboard. */
+  [tabindex='-1']:focus {
+    outline: none;
+  }
+
+  button,
+  a,
+  select,
+  input {
+    touch-action: manipulation;
+  }
+}
+
+/* ---- Floor plan ---- */
+.pl {
+  fill: var(--color-card);
+  stroke: var(--color-ink-2);
+  stroke-width: 1.5;
+}
+.pl-emergency {
+  fill: var(--color-danger-soft);
+  stroke: var(--color-danger);
+  stroke-width: 3;
+}
+.pl-lift,
+.pl-stairs {
+  fill: var(--color-plan-grey);
+}
+.pl-toilet,
+.pl-water {
+  fill: var(--color-plan-water);
+}
+.pl-waiting {
+  fill: var(--color-plan-wait);
+}
+.pl-ramp {
+  fill: var(--color-plan-ramp);
+}
+.pl-target {
+  stroke: var(--color-route);
+  stroke-width: 4.5;
+}
+.pl-via {
+  stroke: var(--color-route);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+.pl-building {
+  fill: var(--color-page);
+  stroke: var(--color-ink);
+  stroke-width: 2.5;
+}
+.pl-corridor {
+  fill: var(--color-plan-corridor);
+}
+.pl-steps {
+  stroke: var(--color-ink-2);
+  stroke-width: 1.5;
+}
+.pl-text {
+  font: 600 11.5px var(--font-sans);
+  fill: var(--color-ink);
+}
+.pl-text-strong {
+  font-weight: 800;
+}
+.pl-route {
+  fill: none;
+  stroke: var(--color-route);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pl-route-casing {
+  fill: none;
+  stroke: var(--color-card);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pl-arrow {
+  fill: var(--color-card);
+}
+.pl-start-dot {
+  fill: var(--color-route);
+  stroke: var(--color-card);
+  stroke-width: 2;
+}
+.pl-start-core {
+  fill: var(--color-card);
+}
+.pl-pin {
+  fill: var(--color-danger);
+  stroke: var(--color-card);
+  stroke-width: 2;
+}
+.pl-tag {
+  fill: var(--color-card);
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+}
+.pl-tag-strong {
+  fill: var(--color-ink);
+}
+.pl-tag-text {
+  font: 700 11px var(--font-sans);
+  fill: var(--color-ink);
+}
+.pl-tag-text-strong {
+  font: 800 11px var(--font-sans);
+  fill: var(--color-card);
+}
+
+/* ---- Charts ---- */
+.ch-grid {
+  stroke: var(--color-grid);
+  stroke-width: 1;
+}
+.ch-base {
+  stroke: var(--color-line);
+  stroke-width: 1.5;
+}
+.ch-tick {
+  font: 15px var(--font-sans);
+  fill: var(--color-ink-2);
+}
+.ch-label {
+  font: 600 17px var(--font-sans);
+  fill: var(--color-ink);
+}
+.ch-sub {
+  font: 14px var(--font-sans);
+  fill: var(--color-ink-2);
+}
+.ch-value {
+  font: 700 17px var(--font-sans);
+  fill: var(--color-ink);
+}
+.ch-bar {
+  fill: var(--color-series);
+}
+.ch-bar-hi {
+  fill: var(--color-brand);
+}
+.ch-hit:focus-visible {
+  outline: none;
+  stroke: var(--color-focus);
+  stroke-width: 3;
+}
+
+/* ---- Waiting-room board ---- */
+.board-flash {
+  background: #1d6b75;
+  outline: 4px solid #ffe14d;
+  animation: board-flash 0.8s ease-in-out infinite alternate;
+}
+@keyframes board-flash {
+  from {
+    background: #0c2a30;
+  }
+  to {
+    background: #1d6b75;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-flash {
+    animation: none;
+  }
+  * {
+    transition: none !important;
+  }
+}
+
+/* ---- Printing the OPD slip ---- */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  body:not(.print-receipt) #slip,
+  body:not(.print-receipt) #slip *,
+  body.print-receipt [data-printing],
+  body.print-receipt [data-printing] * {
+    visibility: visible;
+  }
+  body:not(.print-receipt) #slip,
+  body.print-receipt [data-printing] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: 3px solid #000;
+  }
+}
+
+/* ---- The token ticket: a paper OPD slip with two punched notches ---- */
+.ticket {
+  position: relative;
+  background: var(--color-slip);
+  border-radius: 1rem;
+  color: var(--color-ink);
+}
+.ticket-cut {
+  position: relative;
+  border-top: 2px dashed var(--color-slip-edge);
+}
+.ticket-cut::before,
+.ticket-cut::after {
+  content: '';
+  position: absolute;
+  top: -0.7rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--color-page);
+}
+.ticket-cut::before {
+  left: -1.65rem;
+}
+.ticket-cut::after {
+  right: -1.65rem;
+}
+html.hc .ticket {
+  border: 2px solid var(--color-slip-edge);
+}
+.token-num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Bottom tab bar leaves room for phones' home indicator. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

@@ -1,0 +1,33 @@
+# Render Blueprint: New > Blueprint > pick this repository.
+# You need a MongoDB Atlas (free) connection string for MONGODB_URI.
+services:
+  - type: web
+    name: opd-saathi
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      # The hospital's own time zone: breaks, bookings and the forecast use the
+      # server's clock, which is UTC on hosting services.
+      - key: TZ
+        value: Asia/Kolkata
+      - key: MONGODB_URI
+        sync: false
+      - key: STAFF_ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SECRETS_KEY
+        generateValue: true
+      - key: TRUST_PROXY
+        value: '1'
+      # The "Ask" helper (from Google AI Studio). Without it, word matching answers.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Telegram for patients and families (from @BotFather). Optional.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false

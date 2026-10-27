@@ -1,0 +1,219 @@
+{
+  "name": "OPD Saathi – weather, air and traffic feed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "opd-conditions",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "793856e6-1856-42a9-a7c2-85fef6e6ceac",
+      "name": "Conditions request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "0a75f57d-b40c-447f-884a-5bf93fecb89c"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Change these for your hospital.\nreturn [{\n  json: {\n    lat: 26.85,\n    lon: 80.95,\n    // Optional live traffic: a free key from developer.tomtom.com.\n    // Leave empty and OPD Saathi estimates traffic from the time of day and rain.\n    tomtomKey: '',\n    // A busy road near the hospital (\"lat,lon\") to measure traffic on.\n    roadPoint: '26.8467,80.9462',\n  },\n}];\n"
+      },
+      "id": "d901acf2-5f4f-4221-a177-67054f0aea01",
+      "name": "Settings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.open-meteo.com/v1/forecast?latitude={{ $('Settings').first().json.lat }}&longitude={{ $('Settings').first().json.lon }}&timezone=auto&past_days=1&forecast_days=7&current=temperature_2m,precipitation,weather_code,wind_speed_10m,relative_humidity_2m&hourly=temperature_2m,precipitation_probability,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max",
+        "options": {
+          "timeout": 8000
+        }
+      },
+      "id": "51932f10-cc5d-4c72-8c99-8dcffcf4b841",
+      "name": "Weather",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "url": "=https://air-quality-api.open-meteo.com/v1/air-quality?latitude={{ $('Settings').first().json.lat }}&longitude={{ $('Settings').first().json.lon }}&timezone=auto&forecast_days=5&current=us_aqi&hourly=us_aqi",
+        "options": {
+          "timeout": 6000
+        }
+      },
+      "id": "81dab0a0-0b9a-4ec5-b460-79721f4d10b6",
+      "name": "Air quality",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/12/json?point={{ $('Settings').first().json.roadPoint }}&unit=KMPH&key={{ $('Settings').first().json.tomtomKey || 'none' }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "2a17c51b-cc55-422e-a8b2-5a9d25d06a9b",
+      "name": "Traffic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds the conditions in the shape OPD Saathi expects (see client/src/lib/model.js).\nconst pad = (n) => String(n).padStart(2, '0');\nconst w = $('Weather').first().json;\nlet a = null;\nlet tt = null;\ntry { a = $('Air quality').first().json; } catch {}\ntry { tt = $('Traffic').first().json; } catch {}\n\nconst hourly = {};\nw.hourly.time.forEach((t, i) => {\n  hourly[t.slice(0, 13)] = {\n    temp: w.hourly.temperature_2m[i],\n    rain: w.hourly.precipitation[i] ?? 0,\n    rainProb: w.hourly.precipitation_probability?.[i] ?? null,\n    code: w.hourly.weather_code[i],\n    aqi: null,\n  };\n});\nif (a && a.hourly && a.hourly.time) {\n  a.hourly.time.forEach((t, i) => {\n    const k = t.slice(0, 13);\n    if (hourly[k]) hourly[k].aqi = a.hourly.us_aqi[i];\n  });\n}\nconst daily = {};\nw.daily.time.forEach((d, i) => {\n  let aqi = null;\n  for (let h = 8; h <= 14; h++) {\n    const v = hourly[`${d}T${pad(h)}`]?.aqi;\n    if (v != null) aqi = Math.max(aqi ?? 0, v);\n  }\n  daily[d] = {\n    tMax: w.daily.temperature_2m_max[i],\n    tMin: w.daily.temperature_2m_min[i],\n    rain: w.daily.precipitation_sum[i] ?? 0,\n    rainProb: w.daily.precipitation_probability_max?.[i] ?? null,\n    code: w.daily.weather_code[i],\n    aqi,\n  };\n});\n\n// Traffic: how much longer the road takes now than when it is empty.\nlet traffic = null;\nconst f = tt && tt.flowSegmentData;\nif (f && f.freeFlowTravelTime) {\n  const ratio = f.currentTravelTime / f.freeFlowTravelTime;\n  traffic = {\n    level: Math.max(0, Math.min(1, (ratio - 1) / 1.2)),\n    ratio: Math.round(ratio * 100) / 100,\n    currentSpeed: f.currentSpeed,\n    freeFlowSpeed: f.freeFlowSpeed,\n    at: Date.now(),\n    source: 'tomtom',\n  };\n}\n\nreturn [{\n  json: {\n    source: 'n8n',\n    fetchedAt: Date.now(),\n    now: {\n      temp: w.current?.temperature_2m ?? null,\n      rain: w.current?.precipitation ?? 0,\n      code: w.current?.weather_code ?? null,\n      humidity: w.current?.relative_humidity_2m ?? null,\n      wind: w.current?.wind_speed_10m ?? null,\n      aqi: a?.current?.us_aqi ?? null,\n    },\n    hourly,\n    daily,\n    traffic,\n  },\n}];\n"
+      },
+      "id": "edd7afab-38e7-40c8-a1d1-c9b57951a4f1",
+      "name": "Build conditions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "264d97a6-2ad8-4f16-a081-ff099da5ce1b",
+      "name": "Send to OPD Saathi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## OPD Saathi: conditions feed\n\nWeather and air quality from Open-Meteo (free, no key) plus **live road traffic** from TomTom (free key, optional).\n\n1. Open **Settings**: set the hospital location, and a TomTom key if you have one.\n2. Activate, copy the **production** URL of *Conditions request*.\n3. Paste it into OPD Saathi → Staff → Forecast → *Conditions feed*. The server fetches it every 15 minutes.\n\nSwap the Traffic node for Google Maps Distance Matrix if you prefer; keep `traffic.level` between 0 and 1.",
+        "width": 560,
+        "height": 380
+      },
+      "id": "bea25e15-3f7d-4118-9fd0-d68a3e9f4175",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -140
+      ]
+    }
+  ],
+  "connections": {
+    "Conditions request": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Weather",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather": {
+      "main": [
+        [
+          {
+            "node": "Air quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Air quality": {
+      "main": [
+        [
+          {
+            "node": "Traffic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traffic": {
+      "main": [
+        [
+          {
+            "node": "Build conditions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build conditions": {
+      "main": [
+        [
+          {
+            "node": "Send to OPD Saathi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "staticData": null
+}

@@ -1,0 +1,24 @@
+# Everything in one go: MongoDB + OPD Saathi on http://localhost:5050
+#   docker compose up --build
+# The admin password is printed in the app's log on the first start
+# (or set STAFF_ADMIN_PASSWORD below).
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - '5050:5050'
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/opd-saathi
+      STAFF_ADMIN_PASSWORD: ''
+      # Set these when the app is behind HTTPS (a domain or tunnel):
+      TRUST_PROXY: '1'
+volumes:
+  mongo-data:

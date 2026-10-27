@@ -1,0 +1,207 @@
+{
+  "name": "OPD Saathi – patient SMS and staff alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "opd-events",
+        "responseMode": "onReceived",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7daae717-9b94-4651-88fe-66bf633f7608",
+      "name": "OPD Saathi events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "588392b4-90fb-4db5-95ca-ff3e0daa16aa"
+    },
+    {
+      "parameters": {
+        "jsCode": "// OPD Saathi sends: { type, at, hospital, data: { token, firstName, dept,\n// rooms, floor, lang, mobile?, room?, where?, by? } }\n// Change these two settings:\nconst SETTINGS = {\n  telegramChatId: 'PUT-YOUR-STAFF-GROUP-CHAT-ID', // staff group that gets urgent alerts\n  countryCode: '+91',\n  smsProvider: 'fast2sms', // 'fast2sms' (India) or 'twilio'\n  fast2smsKey: 'PUT-YOUR-FAST2SMS-API-KEY', // fast2sms.com -> Dev API\n};\n\nconst FLOOR = { 0: ['ground floor', 'भूतल'], 1: ['first floor', 'पहली मंज़िल'], 2: ['second floor', 'दूसरी मंज़िल'] };\nconst PLACE = {\n  g_entrance: 'Main entrance', g_reg: 'Registration counters', g_help: 'Help desk', g_emergency: 'Emergency',\n  g_pharmacy: 'Pharmacy', g_lab: 'Laboratory', g_xray: 'X-ray', g_water: 'Drinking water', g_toilets: 'Toilets (ground floor)',\n  g_wheelchair: 'Wheelchair point', g_lift: 'Lift (ground floor)', f1_waitA: 'Waiting hall A', f1_toilets: 'Toilets (first floor)',\n  f1_lift: 'Lift (first floor)', f1_opd1: 'Room 1', f1_opd2: 'Room 2', f1_opd3: 'Room 3', f1_opd4: 'Room 4',\n  f1_opd5: 'Room 5', f1_opd6: 'Room 6', f1_opd7: 'Room 7', f1_opd8: 'Room 8', f2_nurses: \"Nurses' station\",\n  f2_ward4: 'Ward 4', f2_ward5: 'Ward 5', f2_ward6: 'Ward 6', f2_lift: 'Lift (second floor)',\n};\n\nconst out = [];\nfor (const item of $input.all()) {\n  let body = item.json.body ?? item.json;\n  if (typeof body === 'string') {\n    try { body = JSON.parse(body); } catch { body = {}; }\n  }\n  const type = body.type || 'unknown';\n  const d = body.data || {};\n  const hi = d.lang === 'hi';\n  const floor = FLOOR[d.floor] ? FLOOR[d.floor][hi ? 1 : 0] : '';\n  const rooms = (d.rooms || []).join(hi ? ' या ' : ' or ');\n  let route = 'log';\n  let smsText = '';\n  let staffText = '';\n\n  if (type === 'urgent_flag') {\n    route = 'staff';\n    staffText = [\n      'URGENT: help needed at City District Hospital',\n      `${d.token ? 'Token ' + d.token + ' - ' : ''}${d.firstName || 'Person not registered'}`,\n      `Where: ${PLACE[d.where] || d.where || 'not given'}`,\n      `Sent by: ${d.by === 'helper' ? 'a helper' : 'the patient'}`,\n      'Please go now, then press \"Mark as seen\" on the dashboard.',\n    ].join('\\n');\n  } else if (type === 'charges_added' && d.mobile && d.amount > 0) {\n    route = SETTINGS.smsProvider === 'twilio' ? 'twilio' : 'fast2sms';\n    smsText = hi\n      ? `OPD साथी: कृपया अपनी जाँचों के लिए ₹${d.amount} दें (टोकन ${d.token}), फ़ोन से या काउंटर पर।`\n      : `OPD Saathi: Please pay Rs ${d.amount} for your tests (token ${d.token}), on your phone or at the counter.`;\n  } else if (type === 'payment_received' && d.mobile) {\n    route = SETTINGS.smsProvider === 'twilio' ? 'twilio' : 'fast2sms';\n    smsText = hi\n      ? `OPD साथी: ₹${d.amount} का भुगतान मिला (टोकन ${d.token})। रसीद ${d.receipt}।`\n      : `OPD Saathi: Payment received, Rs ${d.amount} for token ${d.token}. Receipt ${d.receipt}.`;\n  } else if ((type === 'turn_near' || type === 'token_called' || type === 'no_show') && d.mobile) {\n    route = SETTINGS.smsProvider === 'twilio' ? 'twilio' : 'fast2sms';\n    if (type === 'turn_near') {\n      smsText = hi\n        ? `OPD साथी: आपकी बारी पास है (टोकन ${d.token})। कृपया ${floor} पर कमरा ${rooms} के पास जाएँ।`\n        : `OPD Saathi: Your turn is close (token ${d.token}). Please go to Room ${rooms} on the ${floor}.`;\n    } else if (type === 'token_called') {\n      smsText = hi\n        ? `OPD साथी: टोकन ${d.token}, कृपया अभी ${floor} पर कमरा ${d.room} में जाएँ।`\n        : `OPD Saathi: Token ${d.token}, please go to Room ${d.room} on the ${floor} now.`;\n    } else {\n      smsText = hi\n        ? `OPD साथी: हमने टोकन ${d.token} बुलाया, पर आप नहीं मिले। कृपया सहायता केंद्र पर बात करें।`\n        : `OPD Saathi: We called token ${d.token} but could not find you. Please talk to the help desk.`;\n    }\n  }\n\n  out.push({\n    json: {\n      type,\n      route,\n      smsText,\n      staffText,\n      mobileE164: d.mobile ? SETTINGS.countryCode + d.mobile : '',\n      mobile10: d.mobile || '',\n      unicode: hi, // Hindi text needs a Unicode SMS\n      fast2smsKey: SETTINGS.fast2smsKey,\n      telegramChatId: SETTINGS.telegramChatId,\n      data: d,\n    },\n  });\n}\nreturn out;\n"
+      },
+      "id": "ce85d660-711e-405b-9b46-f9ea17223c7a",
+      "name": "Read event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 4,
+        "output": "={{ { staff: 0, twilio: 1, fast2sms: 2 }[$json.route] ?? 3 }}"
+      },
+      "id": "2d4f8eba-a6b0-4196-819d-77da5f2a00ae",
+      "name": "Who gets it?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegramChatId }}",
+        "text": "={{ $json.staffText }}",
+        "additionalFields": {}
+      },
+      "id": "334bf1aa-784f-420b-8650-2a416505bd60",
+      "name": "Alert staff on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        760,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "from": "+10000000000",
+        "to": "={{ $json.mobileE164 }}",
+        "message": "={{ $json.smsText }}",
+        "options": {}
+      },
+      "id": "dd77352e-cedf-4141-a027-96f73aff007c",
+      "name": "Send SMS to patient",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.fast2sms.com/dev/bulkV2",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "authorization",
+              "value": "={{ $json.fast2smsKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ route: 'q', message: $json.smsText, language: $json.unicode ? 'unicode' : 'english', flash: 0, numbers: $json.mobile10 }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "57743c29-098f-4e46-968a-17ea6d361528",
+      "name": "Send SMS (Fast2SMS, India)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        480
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Counts today's events (kept between runs while the workflow is active).\nconst s = $getWorkflowStaticData('global');\nconst day = new Date().toISOString().slice(0, 10);\nif (s.day !== day) { s.day = day; s.counts = {}; }\nfor (const item of $input.all()) s.counts[item.json.type] = (s.counts[item.json.type] || 0) + 1;\nreturn [{ json: { day, counts: s.counts } }];\n"
+      },
+      "id": "328dcb05-83e0-478b-b7ac-7cf970eaa770",
+      "name": "Count today's events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## OPD Saathi: patient SMS and staff alerts\n\n1. Open **Read event**: set your staff Telegram chat ID and pick the SMS provider: **Fast2SMS** (India, paste your API key) or **Twilio** (add credentials and your number in *From*).\n2. Add Telegram credentials.\n3. Hindi messages go out as Unicode SMS.\n4. Activate, copy the **production** webhook URL, and paste it into OPD Saathi → Staff → Forecast → *Events webhook*.\n\nOnly patients who typed a mobile number get SMS. Sample patients never have one.",
+        "width": 520,
+        "height": 360
+      },
+      "id": "40c02006-0706-4647-bbf9-04ec8297c1aa",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "OPD Saathi events": {
+      "main": [
+        [
+          {
+            "node": "Read event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read event": {
+      "main": [
+        [
+          {
+            "node": "Who gets it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Who gets it?": {
+      "main": [
+        [
+          {
+            "node": "Alert staff on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send SMS to patient",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send SMS (Fast2SMS, India)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Count today's events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "staticData": null
+}

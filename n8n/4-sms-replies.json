@@ -1,0 +1,172 @@
+{
+  "name": "OPD Saathi – SMS replies for any phone",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "opd-sms-in",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fb19f3e1-b551-48e3-9657-ea90de6df0be",
+      "name": "Incoming SMS (Twilio)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "fe316721-6072-44a6-a24a-fb43f8cc2af3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Change these. The SMS gateway (Twilio here) sends each incoming text.\nconst b = $input.first().json.body || {};\nreturn [{\n  json: {\n    // Where the OPD Saathi server runs (must be reachable from n8n).\n    apiBase: 'http://localhost:5050',\n    // The same value as SMS_KEY in the OPD Saathi server's .env file.\n    smsKey: 'PUT-THE-SMS_KEY-HERE',\n    // Twilio sends From and Body; other gateways use other names.\n    from: b.From || b.from || b.sender || '',\n    text: b.Body || b.text || b.message || '',\n  },\n}];\n"
+      },
+      "id": "9e83fb5c-7456-4979-9303-0a729d585d72",
+      "name": "Settings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/sms/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-opd-sms-key",
+              "value": "={{ $json.smsKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: $json.from, text: $json.text }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "fcada89d-2252-46d2-82dc-079493b1b267",
+      "name": "Ask OPD Saathi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Twilio reads its reply from TwiML (XML). Escape the text for XML.\nconst reply = String($json.reply || '')\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;');\nreturn [{ json: { twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Message>${reply}</Message></Response>` } }];\n"
+      },
+      "id": "da545f80-2a49-4874-9845-2dab6d578d2f",
+      "name": "Make the reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml"
+              }
+            ]
+          }
+        }
+      },
+      "id": "65e654c0-15a0-46ab-a2df-74c51db5d221",
+      "name": "Reply by SMS",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## OPD Saathi: SMS replies (any phone)\n\nPatients without a smartphone text the hospital number:\n- a token (`MED 12`): their place in the line\n- `KAHAN XRAY` / `WHERE PHARMACY`: where it is\n- `IN 123456 MED-12`: join the line at the hospital (the code on the waiting-room screen; only from the number on the slip)\n- urgent words: go to Emergency now\n\n1. In OPD Saathi's `server/.env`, set `SMS_KEY` to a long random value.\n2. Open **Settings** here: the server address and the same key.\n3. Activate, then in Twilio set the number's *A message comes in* webhook to the production URL of **Incoming SMS** (HTTP POST).\n\n\"Your turn is close\" texts go out through workflow 1.",
+        "width": 600,
+        "height": 440
+      },
+      "id": "abd4b48a-db13-46de-a953-b267fe3c1293",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -200
+      ]
+    }
+  ],
+  "connections": {
+    "Incoming SMS (Twilio)": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Ask OPD Saathi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask OPD Saathi": {
+      "main": [
+        [
+          {
+            "node": "Make the reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make the reply": {
+      "main": [
+        [
+          {
+            "node": "Reply by SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "staticData": null
+}

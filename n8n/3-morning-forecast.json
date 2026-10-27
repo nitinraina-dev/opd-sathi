@@ -1,0 +1,159 @@
+{
+  "name": "OPD Saathi – morning crowd forecast",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "e1fc94e3-0abb-4814-8388-34fa76d1212d",
+      "name": "Every morning 7:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "opd-forecast-now",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "6786449f-9d69-40e1-b61f-5bf99e5dd657",
+      "name": "Send it now",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        480
+      ],
+      "webhookId": "5972369c-62a2-4e2e-90dd-cac5bde2d8ec"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Change these.\nreturn [{\n  json: {\n    // Where the OPD Saathi server runs (must be reachable from n8n).\n    apiBase: 'http://localhost:5050',\n    telegramChatId: 'PUT-YOUR-STAFF-GROUP-CHAT-ID',\n    lang: 'en', // or 'hi'\n  },\n}];\n"
+      },
+      "id": "75e6fe64-2c16-4a52-be8b-ba4912cf6e5d",
+      "name": "Settings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBase }}/api/forecast?lang={{ $json.lang }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "bdb32940-dc64-4c4a-8b8f-ff655627f23b",
+      "name": "Get today's forecast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Settings').first().json.telegramChatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "624a5699-f193-41d3-90d7-98eb4d21eaaa",
+      "name": "Send to staff on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## OPD Saathi: morning crowd forecast\n\nEvery morning n8n asks the OPD Saathi server for today's forecast (weather, air, traffic, day of the week) and sends staff a short plan: expected patients, the busiest hour, and what to prepare.\n\n1. Open **Settings**: set the server address and the staff chat ID.\n2. Add Telegram credentials (or use Email / WhatsApp instead).\n3. Activate. To send it right away (for a demo), open the production URL of **Send it now**.",
+        "width": 520,
+        "height": 320
+      },
+      "id": "2db841a9-7e94-4302-b57f-3b535452bccb",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -120
+      ]
+    }
+  ],
+  "connections": {
+    "Every morning 7:30": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send it now": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Get today's forecast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get today's forecast": {
+      "main": [
+        [
+          {
+            "node": "Send to staff on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "staticData": null
+}
