@@ -5,6 +5,8 @@ services:
     name: opd-saathi
     runtime: node
     plan: free
+    # Closest to India. Put the Atlas database in Singapore or Mumbai too.
+    region: singapore
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health

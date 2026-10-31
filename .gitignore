@@ -3,3 +3,6 @@ client/dist
 server/data
 server/.env
 .DS_Store
+
+# Setup notes with keys, shared privately (never pushed)
+share-with-*.md

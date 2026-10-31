@@ -67,7 +67,10 @@ export async function createAuth(store, audit) {
   if (!(await store.listStaff()).length) {
     const password = process.env.STAFF_ADMIN_PASSWORD || randomPassword()
     await store.saveStaff({ _id: 'admin', name: 'Administrator', role: 'admin', hash: await hashPassword(password), v: 1 })
-    const line = `Staff login created:  username "admin"  password "${password}"`
+    // A password chosen in STAFF_ADMIN_PASSWORD is never printed (hosting keeps logs).
+    const line = process.env.STAFF_ADMIN_PASSWORD
+      ? 'Staff login created:  username "admin"  password from STAFF_ADMIN_PASSWORD'
+      : `Staff login created:  username "admin"  password "${password}"`
     console.log(`\n${'='.repeat(line.length)}\n${line}\n${process.env.STAFF_ADMIN_PASSWORD ? '(from STAFF_ADMIN_PASSWORD)' : 'Write it down. Change it in Staff → Accounts, or reset it with: npm run staff:reset -- admin'}\n${'='.repeat(line.length)}\n`)
   }
 

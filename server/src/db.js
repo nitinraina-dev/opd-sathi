@@ -21,7 +21,9 @@ const toDb = ({ id, ...rest }) => ({ _id: id, ...rest })
 const hospitalDoc = (s) => ({ _id: 'main', rev: s.rev, ...Object.fromEntries(HOSPITAL_KEYS.map((k) => [k, s[k]])) })
 
 async function mongoStore(uri) {
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 2500 })
+  // A database set in MONGODB_URI (Atlas) may take a while on a cold start;
+  // the local default answers at once or is not running.
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: process.env.MONGODB_URI ? 15000 : 2500 })
   const upsertAll = (M, items) =>
     items.length ? M.bulkWrite(items.map((x) => ({ replaceOne: { filter: { _id: x.id }, replacement: toDb(x), upsert: true } }))) : null
 
