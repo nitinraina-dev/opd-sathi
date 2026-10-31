@@ -14,6 +14,7 @@ import { Button, LinkButton, PageTitle, TermNote, Notice, Modal } from '../compo
 import { PayPanel, Receipts } from '../components/Payment.jsx'
 import { useMyRecord, secretFor } from '../lib/mine.js'
 import ClaimCard from '../components/ClaimCard.jsx'
+import PaperSlipNote from '../components/PaperSlipNote.jsx'
 import CheckInCard from '../components/CheckInCard.jsx'
 import ShareTurn from '../components/ShareTurn.jsx'
 import { billFor, freeCheckKind, rupees } from '../lib/billing.js'
@@ -94,6 +95,9 @@ export default function SlipPage() {
           <CheckInCard state={state} p={p} />
         </div>
       )}
+      <div className="print:hidden">
+        <PaperSlipNote state={state} p={p} />
+      </div>
       {canPay && (
         <div className="space-y-2 print:hidden">
           <Button icon="rupee" className="w-full text-xl" onClick={() => setPaying(true)}>

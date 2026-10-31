@@ -18,11 +18,14 @@ const pill = (on) =>
     on ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-card hover:border-brand'
   }`
 const input = 'w-full rounded-xl border border-line bg-card px-3 min-h-12 text-base'
-const empty = { name: '', age: '', gender: '', fee: 'later', card: 'bpl' }
+// fee '' means the usual choice: cash where the fee comes first, later otherwise.
+const empty = { name: '', age: '', gender: '', fee: '', card: 'bpl' }
 
-// Admin: what this hospital charges for an Emergency visit (0 = free).
+// Admin: what this hospital charges for an Emergency visit (0 = free), and
+// whether it is taken after care or before the doctor (the Emergency slip).
 export function EmergencyFee({ state, t }) {
   const [v, setV] = useState(String(state.emergencyFee || 0))
+  const [when, setWhen] = useState(state.emergencyPay || 'after')
   const [msg, setMsg] = useState('')
   return (
     <Card className="space-y-3">
@@ -31,6 +34,26 @@ export function EmergencyFee({ state, t }) {
         {t('emr.feeTitle')}
       </h2>
       <p className="text-base text-ink-2">{t('emr.feeHint')}</p>
+      <fieldset>
+        <legend className="mb-1 text-sm font-semibold text-ink-2">{t('emr.feeWhen')}</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {['after', 'before'].map((w) => (
+            <button
+              key={w}
+              type="button"
+              aria-pressed={when === w}
+              onClick={() => {
+                setWhen(w)
+                setMsg('')
+              }}
+              className={pill(when === w)}
+            >
+              <Icon name={w === 'after' ? 'clock' : 'rupee'} />
+              {t(`emr.when.${w}`)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label htmlFor="emr-fee" className="mb-1 block text-sm font-semibold text-ink-2">
@@ -41,7 +64,7 @@ export function EmergencyFee({ state, t }) {
         <Button
           icon="check"
           onClick={async () => {
-            await setEmergencyFee(Math.min(5000, Number(v) || 0))
+            await setEmergencyFee(Math.min(5000, Number(v) || 0), when)
             setMsg(t('common.saved'))
           }}
         >
@@ -67,6 +90,8 @@ export default function EmergencyDesk() {
   const [last, setLast] = useState(null)
   const set = (patch) => setF((x) => ({ ...x, ...patch }))
   const fee = state.emergencyFee || 0
+  const before = fee > 0 && state.emergencyPay === 'before'
+  const pay = f.fee || (before ? 'cash' : 'later')
   const age = f.age === '' ? null : Number(f.age)
   const free = fee ? autoFreeReason({ age }) : null
   const visits = Object.values(state.patients)
@@ -81,9 +106,9 @@ export default function EmergencyDesk() {
       age: f.age === '' ? null : age,
       gender: f.gender,
       lang,
-      paidCash: !free && f.fee === 'cash',
-      card: f.fee === 'card' ? f.card : '',
-      cardOk: f.fee === 'card',
+      paidCash: !free && pay === 'cash',
+      card: pay === 'card' ? f.card : '',
+      cardOk: pay === 'card',
     }).catch(() => null)
     if (p) {
       setLast(p.id)
@@ -97,8 +122,8 @@ export default function EmergencyDesk() {
         <Icon name="emergency" size={32} className="text-danger" />
         {t('emr.title')}
       </h1>
-      <Notice kind="danger" icon="emergency" title={t('emr.careFirst')}>
-        {t('emr.careFirstBody')}
+      <Notice kind="danger" icon="emergency" title={before ? t('emr.careFirstBefore') : t('emr.careFirst')}>
+        {before ? t('emr.careFirstBeforeBody') : t('emr.careFirstBody')}
       </Notice>
       <ScreenGuide id="emergency" items={['record', 'fee']} t={t} />
 
@@ -136,7 +161,9 @@ export default function EmergencyDesk() {
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="mb-1 font-semibold">{fee ? t('emr.feeIs', { amount: rupees(fee) }) : t('emr.noFee')}</legend>
+            <legend className="mb-1 font-semibold">
+              {!fee ? t('emr.noFee') : before ? t('emr.feeIsBefore', { amount: rupees(fee) }) : t('emr.feeIs', { amount: rupees(fee) })}
+            </legend>
             {fee > 0 &&
               (free ? (
                 <p className="flex items-center gap-2">
@@ -151,13 +178,13 @@ export default function EmergencyDesk() {
                       ['cash', 'rupee'],
                       ['card', 'badge'],
                     ].map(([k, icon]) => (
-                      <button key={k} type="button" aria-pressed={f.fee === k} onClick={() => set({ fee: k })} className={pill(f.fee === k)}>
+                      <button key={k} type="button" aria-pressed={pay === k} onClick={() => set({ fee: k })} className={pill(pay === k)}>
                         <Icon name={icon} />
                         {t(`counter.fee.${k}`)}
                       </button>
                     ))}
                   </div>
-                  {f.fee === 'card' && (
+                  {pay === 'card' && (
                     <div className="grid gap-2 sm:grid-cols-3">
                       {FREE_CARDS.map((c) => (
                         <button key={c} type="button" aria-pressed={f.card === c} onClick={() => set({ card: c })} className={pill(f.card === c)}>

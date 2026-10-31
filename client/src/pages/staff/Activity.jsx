@@ -28,7 +28,12 @@ export function describe(e, t) {
     case 'recordEmergency':
       return t(d.free ? 'audit.recordEmergencyFree' : d.amount ? 'audit.recordEmergency' : 'audit.recordEmergencyNoFee', { token: d.token, amount: `₹${d.amount}` })
     case 'setEmergencyFee':
-      return t('audit.setEmergencyFee', { amount: `₹${d.amount}` })
+      return t(d.when === 'before' ? 'audit.setEmergencyFeeBefore' : 'audit.setEmergencyFee', { amount: `₹${d.amount}` })
+    case 'printSlips':
+    case 'slipsToRoom':
+      return t(`audit.${e.action}`, { tokens: (d.tokens || []).join(', ') })
+    case 'setSlipMode':
+      return t('audit.setSlipMode', { mode: t(`slips.mode.${d.mode || 'counter'}.name`) })
     case 'checkIn':
       return t(d.via === 'code' ? 'audit.checkInCode' : d.via === 'sms' ? 'audit.checkInSms' : 'audit.checkInCounter', d)
     case 'movePatient':

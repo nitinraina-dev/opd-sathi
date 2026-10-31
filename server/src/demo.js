@@ -2,7 +2,8 @@
 // part of OPD Saathi, so nothing is set up by hand in front of an audience.
 //   POST /api/demo/setup
 // Everything is made up: sample patients without phone numbers, sample
-// history, sample PM-JAY claims, an alert, and two Emergency visits.
+// history, sample PM-JAY claims, an alert, paper slips for people who
+// registered on a phone, and two Emergency visits.
 
 import crypto from 'node:crypto'
 import { Router } from 'express'
@@ -15,7 +16,9 @@ export function createDemo({ hospital, stats, claims, signals, audit, auth }) {
     act('resetAll')
     act('setArrival', { on: true })
     act('setShareLoad', { on: true })
-    act('setEmergencyFee', { amount: 50 })
+    // Like many government hospitals: ₹20 for the Emergency slip, before the doctor.
+    act('setEmergencyFee', { amount: 20, when: 'before' })
+    act('setSlipMode', { mode: 'counter' })
     // Four weeks of history: the forecast learns, and a recent rise in fever
     // patients raises the early warning.
     await stats.loadSample(hospital.raw())
@@ -30,7 +33,21 @@ export function createDemo({ hospital, stats, claims, signals, audit, auth }) {
       ['Geeta', 'गीता', 66, 'f', 'MED'],
     ])
       act('registerPatient', { name, nameHi, age, gender, dept, lang: 'hi', via: 'app', payChoice: 'counter', secret: crypto.randomBytes(16).toString('hex') })
-    // Emergency: one visit paid after care, one still to settle.
+    // Four who registered on a phone and are in the line: their paper slips
+    // for the doctor are still to print (two), at the counter, or at the room.
+    const phone = [
+      ['Sunil', 'सुनील', 52, 'm', 'MED'],
+      ['Pooja', 'पूजा', 29, 'f', 'ENT'],
+      ['Asha', 'आशा', 45, 'f', 'MED'],
+      ['Mohan', 'मोहन', 38, 'm', 'BON'],
+    ].map(([name, nameHi, age, gender, dept]) =>
+      act('registerPatient', { name, nameHi, age, gender, dept, lang: 'hi', via: 'app', here: true, payChoice: 'upi', secret: crypto.randomBytes(16).toString('hex') }),
+    )
+    act('payBill', { pid: phone[0].id, method: 'upi', ref: 'DEMO', mode: 'demo' })
+    act('printSlips', { pids: [phone[2].id, phone[3].id] })
+    act('slipsToRoom', { pids: [phone[2].id] })
+    // Emergency: one slip paid at the Emergency counter, one sent in first
+    // (very ill) and still to settle.
     const paid = act('recordEmergency', { name: 'Unknown', lang: 'hi' })
     act('payBill', { pid: paid.id, method: 'cash' })
     act('recordEmergency', { name: 'Imran', age: 34, gender: 'm', lang: 'hi' })

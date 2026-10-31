@@ -311,13 +311,13 @@ html.hc {
   body * {
     visibility: hidden;
   }
-  body:not(.print-receipt) #slip,
-  body:not(.print-receipt) #slip *,
+  body:not(.print-receipt):not(.print-batch) #slip,
+  body:not(.print-receipt):not(.print-batch) #slip *,
   body.print-receipt [data-printing],
   body.print-receipt [data-printing] * {
     visibility: visible;
   }
-  body:not(.print-receipt) #slip,
+  body:not(.print-receipt):not(.print-batch) #slip,
   body.print-receipt [data-printing] {
     position: absolute;
     left: 0;
@@ -325,6 +325,28 @@ html.hc {
     width: 100%;
     border: 3px solid #000;
   }
+  /* Paper slips for the doctor: only they print, one per page. */
+  body.print-batch > :not(#print-batch) {
+    display: none !important;
+  }
+  body.print-batch #print-batch {
+    display: block;
+  }
+  body.print-batch #print-batch,
+  body.print-batch #print-batch * {
+    visibility: visible;
+  }
+}
+
+/* ---- Paper slips for the doctor (printed only) ---- */
+#print-batch {
+  display: none;
+}
+.paper-slip {
+  break-after: page;
+}
+.paper-slip:last-child {
+  break-after: auto;
 }
 
 /* ---- The token ticket: a paper OPD slip with two punched notches ---- */

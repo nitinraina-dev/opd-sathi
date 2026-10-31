@@ -18,7 +18,7 @@ import {
   reportsReady,
   checkIn,
 } from '../../lib/actions.js'
-import { deptSummary, roomState, servingIn, totalWaiting, crowdLevel, reportsState } from '../../lib/queue.js'
+import { deptSummary, roomState, servingIn, totalWaiting, crowdLevel, reportsState, slipState } from '../../lib/queue.js'
 import { estimateAccuracy, feedbackSummary } from '../../lib/impact.js'
 import { SCORES, SCORE_ICON } from '../../data/feedback.js'
 import { hm, minutesOfDay } from '../../lib/clock.js'
@@ -255,6 +255,19 @@ function BackChip({ p, t }) {
   )
 }
 
+// Registered on a phone: where their paper slip is (the doctor writes on it).
+function SlipChip({ p, t }) {
+  const st = slipState(p)
+  if (!st) return null
+  const ok = st === 'atRoom' || st === 'given'
+  return (
+    <span className={`flex items-center gap-1 rounded-full border-2 px-2 text-base font-semibold ${ok ? 'border-line' : 'border-warn bg-warn-soft'}`}>
+      <Icon name={ok ? 'check' : 'slip'} size={18} />
+      {t(`slips.state.${st}`)}
+    </span>
+  )
+}
+
 function QueueRow({ p, i, now, t, lang, allowed }) {
   const [to, setTo] = useState('')
   const waited = Math.max(0, Math.round((now - (p.reports?.backAt || p.createdAt)) / 60000))
@@ -275,6 +288,7 @@ function QueueRow({ p, i, now, t, lang, allowed }) {
           </span>
         )}
         <BackChip p={p} t={t} />
+        <SlipChip p={p} t={t} />
         <BillChip bill={billSummary(p)} t={t} />
         <span className="ml-auto text-base text-ink-2">{t('staff.waited', { n: waited })}</span>
       </p>
@@ -376,6 +390,7 @@ function DeptCard({ s, state, now, t, lang, allowed }) {
                 </span>
               )}
               {cur && <BackChip p={cur} t={t} />}
+              {cur && <SlipChip p={cur} t={t} />}
               {cur && <BillChip bill={billSummary(cur)} t={t} />}
               {cur && mode === 'server' && cur.claim && (
                 <Link to="/staff/claims" className="no-underline">

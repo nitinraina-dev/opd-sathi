@@ -9,7 +9,9 @@ import Icon from '../components/Icon.jsx'
 import { useHospital } from '../lib/store.js'
 import { rupees } from '../lib/billing.js'
 
-// Emergency comes first: no token, no registration, no questions.
+// Emergency comes first: no token, no registration, no questions. Where the
+// hospital takes a fee for the Emergency slip before the doctor, say so
+// plainly, so nobody is caught without it.
 export default function Emergency() {
   const state = useHospital()
   const { t } = useI18n()
@@ -17,9 +19,14 @@ export default function Emergency() {
   const openHelp = useOpenHelp()
   const from = placeById[settings.here] ? settings.here : 'g_entrance'
   const res = useRoute(from, EMERGENCY, settings.avoidStairs)
+  const fee = state.emergencyFee || 0
+  const before = fee > 0 && state.emergencyPay === 'before'
+  const money = before
+    ? `${t('emergency.slipBefore')} ${t('emergency.feeBefore', { amount: rupees(fee) })}`
+    : `${t('emergency.noToken')} ${t('emergency.noPay')}${fee > 0 ? ` ${t('emergency.feeLater', { amount: rupees(fee) })}` : ''}`
 
   usePageSpeech(
-    [t('emergency.title'), t('emergency.where'), t('emergency.tellStaff'), t('emergency.noToken'), t('emergency.calls'), ...(res ? res.steps.map((s) => renderStep(s, t)) : [])].join(
+    [t('emergency.title'), t('emergency.where'), t('emergency.tellStaff'), money, ...(before ? [t('emergency.veryIll')] : []), t('emergency.calls'), ...(res ? res.steps.map((s) => renderStep(s, t)) : [])].join(
       '. ',
     ),
   )
@@ -31,10 +38,8 @@ export default function Emergency() {
         <PageTitle>{t('emergency.title')}</PageTitle>
         <p className="-mt-2 font-semibold">{t('emergency.where')}</p>
         <p>{t('emergency.tellStaff')}</p>
-        <p className="text-sm">
-          {t('emergency.noToken')} {t('emergency.noPay')}
-          {state.emergencyFee > 0 && ` ${t('emergency.feeLater', { amount: rupees(state.emergencyFee) })}`}
-        </p>
+        <p className="text-sm">{money}</p>
+        {before && <p className="font-semibold">{t('emergency.veryIll')}</p>}
         <Button variant="secondary" size="lg" icon="hand" className="w-full text-danger" onClick={openHelp}>
           {t('urgent.send')}
         </Button>

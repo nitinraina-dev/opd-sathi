@@ -60,6 +60,21 @@ export function joinKind(p) {
   return null
 }
 
+// Paper slips for people who registered on a phone and are in the line:
+// 'due' (to print), 'printed' (at the counter, to take to the room),
+// 'atRoom' (with the doctor) or 'given' (the patient has it).
+export const slipState = (p) => (p?.slip && ['waiting', 'called'].includes(p.status) ? p.slip.status : null)
+
+// Slips to print, soonest first: anyone already called (the doctor is
+// waiting for it), then by place in the line.
+export function slipsToPrint(state, deptId = null) {
+  const place = (p) => (p.status === 'called' ? -1 : aheadOf(state, p))
+  return Object.values(state.patients)
+    .filter((p) => slipState(p) === 'due' && (!deptId || p.dept === deptId))
+    .map((p) => ({ p, place: place(p) }))
+    .sort((a, b) => a.place - b.place || a.p.num - b.p.num)
+}
+
 export function servingIn(state, room) {
   const id = state.rooms[room]?.servingId
   const p = id && state.patients[id]

@@ -73,6 +73,8 @@ export default {
     claims: 'PM-JAY claims',
     emergencyDesk: 'Emergency desk',
     stage: 'Demo stage',
+    slips: 'Paper slips',
+    gate: 'Gate screen (join code)',
   },
 
   terms: {
@@ -106,6 +108,8 @@ export default {
     planSub: 'Best time to come, weather and roads',
     ask: 'Ask a question',
     askSub: 'Speak or type, in Hindi or English',
+    board: 'Watch the waiting-room board',
+    boardSub: 'Tokens being called now, from anywhere',
     emergencySub: 'Go now. No token needed.',
     yourToken: 'Your token',
     calledNow: 'Your token has been called. Please go now.',
@@ -143,6 +147,9 @@ export default {
     way: 'The way to Emergency',
     noPay: 'Emergency care never waits for payment.',
     feeLater: 'This hospital charges {amount} for an Emergency visit. You pay later, after you are cared for. Nobody is turned away.',
+    slipBefore: 'You do not need an OPD token. Get the Emergency slip at the Emergency counter.',
+    feeBefore: 'It costs {amount}, paid before the doctor. Keep it ready in cash or UPI. It is free for people aged 60 or over, children under 5 and free-care card holders: show the card.',
+    veryIll: 'If the person is very ill, tell the staff at once. Do not wait in a line.',
   },
 
   signs: {
@@ -307,11 +314,12 @@ export default {
     nobody: 'No one yet',
     whatNext: 'What to do now',
     next: {
-      far: 'Sit in Waiting hall A on the first floor. Keep this screen open. We will tell you when your turn is close.',
+      far: 'Wait anywhere you like: in Waiting hall A on the first floor, or outside if it is full. Keep this screen open. We will tell you when your turn is close.',
       near: 'Please go to {rooms} on {floor} and wait near the door. Listen for your token.',
       called: 'Go to Room {room} now. Show your slip at the door.',
     },
     wayToHall: 'Show the way to Waiting hall A',
+    watchBoard: 'Watch the waiting-room board',
     status: {
       waiting: 'You are in the line.',
       called: 'It is your turn!',
@@ -365,6 +373,7 @@ export default {
     done: 'OPD Saathi: Thank you for coming (token {token}). How was your visit? Reply 1 for good, 2 for okay or 3 for bad.',
     reportsReady: 'OPD Saathi: Your test reports are ready at the Laboratory (token {token}). Collect them, then join the line again: you go in near the front.',
     backIn: 'OPD Saathi: You are back in the line with your reports (token {token}). You go in near the front.',
+    slipAtRoom: 'OPD Saathi: Your paper slip for the doctor is at {rooms} (token {token}). You do not need to stand in the registration line for it.',
     rateThanks: 'Thank you for telling us. It helps the hospital do better.',
     rateNone: 'We could not find a finished visit for this phone number. Send 1, 2 or 3 and your token, for example 1 MED 12.',
   },
@@ -1008,10 +1017,14 @@ export default {
     claimStepAmount: 'PM-JAY claim {claim}: {step}, {amount}',
     claimSamplesAdded: 'Added {n} sample PM-JAY claims',
     claimSamplesRemoved: 'Removed the sample PM-JAY claims',
-    recordEmergency: 'Recorded Emergency visit {token} ({amount} to pay after care)',
+    recordEmergency: 'Recorded Emergency visit {token} ({amount} to pay)',
     recordEmergencyFree: 'Recorded Emergency visit {token} (free)',
     recordEmergencyNoFee: 'Recorded Emergency visit {token}',
     setEmergencyFee: 'Set the Emergency visit fee to {amount}',
+    setEmergencyFeeBefore: 'Set the Emergency slip fee to {amount}, paid before the doctor',
+    printSlips: 'Printed paper slips: {tokens}',
+    slipsToRoom: 'Took paper slips to the room: {tokens}',
+    setSlipMode: 'Paper slips now: {mode}',
     demoSetup: 'Set up the demo day',
     setShareLoad_on: 'Turned on: nearby hospitals shown to patients when busy',
     setShareLoad_off: 'Turned off: nearby hospitals not shown to patients',
@@ -1164,6 +1177,9 @@ export default {
     startTitle: 'Start the waiting-room board',
     startSound: 'Start with sound',
     startQuiet: 'Start without sound',
+    phoneNote: 'Tokens being called now. You do not need to be in the waiting room: your phone tells you when your turn is close.',
+    soundOn: 'Read tokens aloud',
+    soundOff: 'Stop reading aloud',
   },
 
   pmjay: {
@@ -1465,6 +1481,7 @@ export default {
     name: 'First name (if known)',
     age: 'Age (if known)',
     feeIs: 'Emergency visit fee: {amount}, paid after care',
+    feeIsBefore: 'Emergency slip fee: {amount}, paid before the doctor',
     noFee: 'This hospital does not charge for Emergency visits. An admin can set a fee below.',
     record: 'Record the visit',
     recorded: 'Recorded: {token}',
@@ -1472,8 +1489,12 @@ export default {
     none: 'None yet.',
     unknown: 'Name not known',
     feeTitle: 'Emergency visit fee (admin)',
-    feeHint: 'Some hospitals charge for an Emergency visit. It is always billed after care, never before, and free care (age 60 or over, under 5, or a card staff have seen) still applies. 0 means free.',
+    feeHint: 'Some hospitals charge for an Emergency visit: after care, or before it for the Emergency slip. Free care (age 60 or over, under 5, or a card staff have seen) still applies. 0 means free.',
     feeLabel: 'Fee (₹)',
+    feeWhen: 'When is it paid?',
+    when: { after: 'After care (billed later)', before: 'Before the doctor (Emergency slip)' },
+    careFirstBefore: 'Someone very ill goes in first.',
+    careFirstBeforeBody: 'This hospital takes the Emergency slip fee before the doctor. Make the slip quickly here. If the patient is very ill, or cannot pay now, send them in first and settle the bill later.',
   },
 
   ask: {
@@ -1634,6 +1655,73 @@ export default {
     rateNone: 'Send the token first (for example MED 12). After the visit, send 1, 2 or 3.',
   },
 
+  paper: {
+    title: 'The paper slip for the doctor',
+    atRoomTitle: 'Your paper slip is with the doctor',
+    noLine: 'You do not need to stand in the counter line for it.',
+    due: {
+      counter: 'The doctor writes on a paper slip. The hospital prints yours and takes it to {rooms}.',
+      room: 'The doctor writes on a paper slip. Yours is printed at {rooms} when your turn is close.',
+      window: 'The doctor writes on a paper slip. Collect yours at the Slip window, next to the registration counter: show this screen. No form, no fee, no long line.',
+    },
+    printed: 'Your paper slip is printed and on its way to {rooms}.',
+    atRoom: 'It is at {rooms}.',
+    given: 'You have your paper slip. Take it to the doctor.',
+    called: 'At the door, say your token. Staff will bring your slip.',
+    way: 'Show the way to the Slip window',
+    ageSex: 'Age / sex',
+    dept: 'Department',
+    room: 'Room',
+    date: 'Date',
+    viaPhone: 'Registered on a phone. In the line since {time}.',
+    copy: 'Printed again (copy {n})',
+    notes: "Doctor's notes",
+    nextVisit: 'Next visit',
+    sign: "Doctor's signature",
+  },
+
+  slips: {
+    title: 'Paper slips for the doctor',
+    hint: 'People who registered on a phone have no paper slip. Print theirs here, so nobody queues at the counter just for the paper.',
+    modeTitle: 'How slips reach the doctor',
+    mode: {
+      counter: { name: 'Printed here, taken to the room', sub: "Print in batches between patients. Someone takes them to the doctor's room." },
+      room: { name: "Printed at the doctor's room", sub: "A printer at the nurse's table prints each slip when the patient is close." },
+      window: { name: 'Collected at a slip window', sub: 'Patients show their phone at a slip-only window. No form, no fee: a few seconds each.' },
+    },
+    modeAdmin: 'Only an admin can change this.',
+    all: 'All doctors',
+    toPrint: 'To print ({n})',
+    none: 'Nothing to print.',
+    printAll: 'Print all ({n})',
+    print: 'Print',
+    reprint: 'Print again',
+    next: 'Next in line',
+    ahead_one: '1 person ahead',
+    ahead_other: '{n} people ahead',
+    calledWaiting: 'Called to Room {room}: the doctor is waiting',
+    carryTitle: 'Printed: take to the room ({n})',
+    carryNone: 'Nothing to take.',
+    taken: 'Taken to the room',
+    auto: 'Print by itself when the patient is 3 away',
+    autoHint: 'Use this on the computer at the doctor\'s room. To skip the print box each time, start Chrome with --kiosk-printing.',
+    find: 'At the window, or a lost slip: token',
+    findNone: 'No one in the line has a phone registration with that token.',
+    sent_one: 'Sent 1 slip to the printer.',
+    sent_other: 'Sent {n} slips to the printer.',
+    state: { due: 'No paper slip yet', printed: 'Slip at the counter', atRoom: 'Slip at the room', given: 'Has the slip' },
+  },
+
+  gate: {
+    title: 'Booked on your phone? Join the line here',
+    step1: 'Scan this code with your phone camera, or type the 6 numbers on your My turn page.',
+    step2: 'You do not need to go to the waiting room. Wait anywhere: your phone tells you when your turn is close.',
+    noBooking: 'Not booked? Register on your phone, or at the registration counter.',
+    emergency: 'Emergency: go straight to Casualty, under the red sign.',
+    login: 'Staff: log in on this screen to show the code.',
+    loginBtn: 'Log in',
+  },
+
   guide: {
     title: 'How to use this screen',
     hide: 'Hide',
@@ -1699,6 +1787,24 @@ export default {
         how: 'a patient who has not paid is still called by the doctor. Payment can wait.',
       },
     },
+    slips: {
+      print: {
+        do: 'Slips to print:',
+        how: 'press Print all. The soonest are at the top. Red means the doctor is already waiting for it.',
+      },
+      carry: {
+        do: 'Printed here:',
+        how: "take them to the doctor's room, then press Taken to the room. The patient's phone then says their slip is with the doctor.",
+      },
+      lost: {
+        do: 'At the slip window, or a lost slip:',
+        how: 'type the token (or scan the QR code on their phone) and press Print.',
+      },
+      room: {
+        do: "On the computer at the doctor's room:",
+        how: 'choose that doctor at the top and turn on Print by itself.',
+      },
+    },
     emergency: {
       record: {
         do: 'Then record the visit:',
@@ -1706,7 +1812,7 @@ export default {
       },
       fee: {
         do: 'The fee, if any:',
-        how: 'is billed after care, and free care by age or card still applies. Admins set it at the bottom of this screen.',
+        how: 'is billed after care, or taken first for the Emergency slip, as an admin sets it at the bottom of this screen. Free care by age or card still applies.',
       },
     },
     claims: {

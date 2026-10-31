@@ -70,6 +70,12 @@ function checkNear(s, ev, now) {
   }
 }
 
+// The paper slip is now with the doctor: tell the patient not to queue for it.
+function slipArrived(s, p, ev, now) {
+  addMessage(s, p, 'slipAtRoom', now)
+  ev.push({ type: 'slip_at_room', data: publicInfo(p) })
+}
+
 function newPatient(s, data, now) {
   const d = deptById[data.dept]
   const num = (s.counters[d.id] || 0) + 1
@@ -98,6 +104,11 @@ function newPatient(s, data, now) {
     nearAlert: false,
     secret: data.secret || '',
   }
+  // The doctor writes on a paper slip. The counter hands one over at once;
+  // someone who registered on a phone gets theirs printed for them (see
+  // printSlips), so they never queue at the counter for it. Moving to
+  // another doctor makes a new token, so a new slip.
+  if (p.via === 'app') p.slip = { status: 'due' }
   if (data.bill) {
     // Moved to another department: the bill moves too.
     p.bill = data.bill
@@ -496,14 +507,55 @@ export const ACTIONS = {
   },
 
   // Some hospitals charge for an Emergency visit. 0 = free (the default).
-  setEmergencyFee(s, { amount }) {
+  // `when`: 'after' care (billed afterwards) or 'before' (many government
+  // hospitals make an Emergency slip, and take the fee, before the doctor).
+  setEmergencyFee(s, { amount, when }) {
     s.emergencyFee = amount
+    if (when) s.emergencyPay = when
     return amount
   },
 
-  // An Emergency (Casualty) visit, recorded by staff once care has started:
-  // never before, and never in an OPD line. Any fee is billed afterwards;
-  // free care (age, or a card staff have seen) applies as at the counter.
+  // Paper slips for people who registered on a phone, printed in a batch.
+  // Printed at the counter they still have to reach the room ('printed');
+  // printed at the room they are there already; at the slip window the
+  // patient is standing there and takes it. Printing again (a lost slip) is fine.
+  printSlips(s, { pids }, ev, now) {
+    const mode = s.slipMode || 'counter'
+    const status = { counter: 'printed', room: 'atRoom', window: 'given' }[mode]
+    let n = 0
+    for (const pid of pids) {
+      const p = s.patients[pid]
+      if (!p?.slip || !['waiting', 'called'].includes(p.status)) continue
+      p.slip = { ...p.slip, status, printedAt: now, copies: (p.slip.copies || 0) + 1, ...(status === 'atRoom' ? { atRoomAt: now } : {}) }
+      if (status === 'atRoom') slipArrived(s, p, ev, now)
+      n++
+    }
+    return n
+  },
+
+  // Printed at the counter, now taken to the doctor's room.
+  slipsToRoom(s, { pids }, ev, now) {
+    let n = 0
+    for (const pid of pids) {
+      const p = s.patients[pid]
+      if (p?.slip?.status !== 'printed') continue
+      p.slip = { ...p.slip, status: 'atRoom', atRoomAt: now }
+      if (['waiting', 'called'].includes(p.status)) slipArrived(s, p, ev, now)
+      n++
+    }
+    return n
+  },
+
+  setSlipMode(s, { mode }) {
+    s.slipMode = mode
+    return mode
+  },
+
+  // An Emergency (Casualty) visit, recorded by staff, never in an OPD line.
+  // Where the fee is taken after care, it is recorded once care has started
+  // and billed afterwards; where it is taken before (the Emergency slip), it
+  // is recorded at the Emergency counter. Free care (age, or a card staff
+  // have seen) applies as at the counter.
   recordEmergency(s, a, ev, now) {
     const num = (s.counters.EMR || 0) + 1
     s.counters.EMR = num
@@ -567,7 +619,7 @@ export function runAction(s, name, args = {}) {
 
 // ---- Sending only what changed (server -> browsers) -------------------------
 
-export const HOSPITAL_KEYS = ['v', 'clock', 'autoRun', 'arrival', 'emergencyFee', 'shareLoad', 'counters', 'rooms', 'history', 'seq', 'sampleIdx']
+export const HOSPITAL_KEYS = ['v', 'clock', 'autoRun', 'arrival', 'emergencyFee', 'emergencyPay', 'slipMode', 'shareLoad','counters', 'rooms', 'history', 'seq', 'sampleIdx']
 const CAPS = { flags: 50, messages: 150, calls: 30 }
 
 export function diffState(a, b) {

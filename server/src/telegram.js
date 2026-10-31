@@ -17,7 +17,7 @@ import { simNow } from '../../client/src/lib/clock.js'
 import { limiter } from './limit.js'
 
 // What a follower is told: the turn, never the bill.
-const ALERTS = new Set(['near', 'called', 'end', 'noshow', 'checkedIn', 'moved', 'reportsReady', 'backIn', 'done'])
+const ALERTS = new Set(['near', 'called', 'end', 'noshow', 'checkedIn', 'moved', 'reportsReady', 'backIn', 'done', 'slipAtRoom'])
 const MAX_FOLLOWS = 5
 const STOP = /^\/?(stop|band|बंद|रोको)\b/i
 

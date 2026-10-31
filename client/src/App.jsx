@@ -18,6 +18,7 @@ const CheckIn = lazy(() => import('./pages/CheckIn.jsx'))
 const Ask = lazy(() => import('./pages/Ask.jsx'))
 const Stage = lazy(() => import('./pages/Stage.jsx'))
 const Board = lazy(() => import('./pages/Board.jsx'))
+const Gate = lazy(() => import('./pages/Gate.jsx'))
 const StaffLayout = lazy(() => import('./pages/staff/StaffLayout.jsx'))
 const Dashboard = lazy(() => import('./pages/staff/Dashboard.jsx'))
 const Counter = lazy(() => import('./pages/staff/Counter.jsx'))
@@ -28,11 +29,12 @@ const Activity = lazy(() => import('./pages/staff/Activity.jsx'))
 const Payments = lazy(() => import('./pages/staff/Payments.jsx'))
 const Claims = lazy(() => import('./pages/staff/Claims.jsx'))
 const EmergencyDesk = lazy(() => import('./pages/staff/EmergencyDesk.jsx'))
+const Slips = lazy(() => import('./pages/staff/Slips.jsx'))
 
 export default function App() {
   const [settings] = useSettings()
   const { pathname } = useLocation()
-  const patient = !pathname.startsWith('/staff') && !pathname.startsWith('/board')
+  const patient = !pathname.startsWith('/staff') && !pathname.startsWith('/board') && !pathname.startsWith('/gate')
 
   useEffect(() => {
     const html = document.documentElement
@@ -74,8 +76,10 @@ export default function App() {
         <Route path="payments" element={<Payments />} />
         <Route path="claims" element={<Claims />} />
         <Route path="emergency" element={<EmergencyDesk />} />
+        <Route path="slips" element={<Slips />} />
       </Route>
       <Route path="board" element={<Board />} />
+      <Route path="gate" element={<Gate />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

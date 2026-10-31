@@ -50,7 +50,10 @@ export const addSamplePatients = (n = 20) => quiet(dispatch('addSamplePatients',
 export const setSpeed = (speed) => quiet(dispatch('setSpeed', { speed }))
 export const setAutoRun = (on) => quiet(dispatch('setAutoRun', { on }))
 export const setArrival = (on) => quiet(dispatch('setArrival', { on }))
-export const setEmergencyFee = (amount) => quiet(dispatch('setEmergencyFee', { amount }))
+export const setEmergencyFee = (amount, when) => quiet(dispatch('setEmergencyFee', { amount, when }))
+export const printSlips = (pids) => quiet(dispatch('printSlips', { pids }))
+export const slipsToRoom = (pids) => quiet(dispatch('slipsToRoom', { pids }))
+export const setSlipMode = (mode) => quiet(dispatch('setSlipMode', { mode }))
 export const setShareLoad = (on) => quiet(dispatch('setShareLoad', { on }))
 export const resetAll = () => quiet(dispatch('resetAll'))
 

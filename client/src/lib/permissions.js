@@ -24,8 +24,11 @@ export const ACTION_ROLES = {
   markFlagSeen: DESK,
   checkIn: DESK, // patients check in themselves through /api/checkin (with the code)
   reportsReady: DESK, // the lab or the desk: test reports are ready to collect
-  recordEmergency: DESK, // after care has started; never before
+  recordEmergency: DESK, // after care has started, or at the Emergency counter where the fee comes first
   setEmergencyFee: ['admin'],
+  printSlips: DESK, // the doctor's paper slip, for people who registered on a phone
+  slipsToRoom: DESK,
+  setSlipMode: ['admin'],
   setShareLoad: ['admin'],
   payBill: DESK, // cash at the counter
   decideWaiver: DESK,
@@ -41,6 +44,7 @@ export const ACTION_ROLES = {
 // Other staff features.
 export const FEATURE_ROLES = {
   counter: DESK,
+  slips: DESK,
   forecast: DESK,
   payments: DESK,
   paymentSettings: ['admin'],
@@ -60,14 +64,14 @@ export const FEATURE_ROLES = {
 
 // Groups for the activity log filter.
 export const AUDIT_GROUPS = {
-  queue: ['registerPatient', 'checkIn', 'reportsReady', 'callNext', 'markNoShow', 'sendToEnd', 'movePatient'],
+  queue: ['registerPatient', 'checkIn', 'reportsReady', 'callNext', 'markNoShow', 'sendToEnd', 'movePatient', 'printSlips', 'slipsToRoom'],
   doctor: ['setRoomStatus'],
   alerts: ['raiseFlag', 'markFlagSeen'],
   accounts: ['login', 'loginFailed', 'logout', 'passwordChanged', 'accountCreated', 'accountUpdated', 'accountDeleted'],
   payments: ['payBill', 'decideWaiver', 'addCharges', 'refundItem', 'paymentSettings', 'recordEmergency', 'setEmergencyFee'],
   claims: ['claimCreated', 'claimStep', 'claimSamples'],
   forecast: ['signalAdded', 'signalRemoved', 'signalDismissed'],
-  admin: ['addSamplePatients', 'setSpeed', 'setAutoRun', 'setArrival', 'setShareLoad', 'demoSetup', 'resetAll', 'configChanged', 'historyLoaded', 'historyCleared'],
+  admin: ['addSamplePatients', 'setSpeed', 'setAutoRun', 'setArrival', 'setShareLoad', 'setSlipMode', 'demoSetup', 'resetAll', 'configChanged', 'historyLoaded', 'historyCleared'],
 }
 
 export function can(user, what) {
@@ -95,6 +99,7 @@ export const PUBLIC_PATIENT_FIELDS = [
   'movedFrom',
   'lang',
   'est', // the wait we told them when they joined, to compare with the real one
+  'slip', // where their paper slip is (only a status and times)
 ]
 
 const pickFields = (o, keys) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]))

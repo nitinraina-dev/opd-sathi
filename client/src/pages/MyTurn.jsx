@@ -26,6 +26,7 @@ import ClaimCard from '../components/ClaimCard.jsx'
 import CheckInCard from '../components/CheckInCard.jsx'
 import FeedbackCard from '../components/FeedbackCard.jsx'
 import ShareTurn from '../components/ShareTurn.jsx'
+import PaperSlipNote from '../components/PaperSlipNote.jsx'
 import { billFor, freeCheckKind, rupees } from '../lib/billing.js'
 import { testById } from '../data/fees.js'
 
@@ -207,6 +208,7 @@ export default function MyTurn() {
         </TokenTicket>
       )}
 
+      <PaperSlipNote state={state} p={p} />
       {['booked', 'waiting'].includes(p.status) && <ShareTurn p={p} />}
 
       {atTests && (
@@ -311,6 +313,9 @@ export default function MyTurn() {
               className="w-full"
             >
               {near ? t('slip.way', { rooms: roomsText(p.dept, t) }) : t('turn.wayToHall')}
+            </LinkButton>
+            <LinkButton to="/board?view=phone" variant="ghost" icon="tv" className="w-full">
+              {t('turn.watchBoard')}
             </LinkButton>
           </Card>
         </section>

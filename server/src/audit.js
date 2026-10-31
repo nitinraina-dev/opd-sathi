@@ -50,7 +50,12 @@ export function actionDetail(name, args, result, before) {
     case 'recordEmergency':
       return { token: result?.token || null, amount: result?.bill?.[0]?.amount || 0, free: result?.bill?.[0]?.status === 'waived' }
     case 'setEmergencyFee':
-      return { amount: args.amount }
+      return { amount: args.amount, when: args.when || before.emergencyPay || 'after' }
+    case 'printSlips':
+    case 'slipsToRoom':
+      return { tokens: args.pids.map((pid) => before.patients[pid]?.token).filter(Boolean), n: result || 0 }
+    case 'setSlipMode':
+      return { mode: args.mode }
     case 'checkIn':
       return { token: result || before.patients[args.pid]?.token || null, via: 'counter' }
     case 'reportsReady':

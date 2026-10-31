@@ -18,7 +18,12 @@ export function initialState() {
     clock: makeClock(1, demoStartTime()),
     autoRun: false,
     arrival: true, // phones book; the place in the line starts at check-in
-    emergencyFee: 0, // ₹ for an Emergency visit, billed after care (0 = free)
+    emergencyFee: 0, // ₹ for an Emergency visit (0 = free)
+    emergencyPay: 'after', // when that fee is taken: 'after' care, or 'before' (the Emergency slip)
+    // How the doctor's paper slip reaches the room for people who registered
+    // on a phone: 'counter' (printed there, taken to the room), 'room'
+    // (printed at the doctor's room) or 'window' (collected at a slip-only window).
+    slipMode: 'counter',
     shareLoad: true, // when overcrowded, show patients nearby hospitals with shorter waits
     patients: {}, // id -> patient
     counters: {}, // dept -> last token number

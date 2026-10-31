@@ -43,6 +43,7 @@ const PatientSchema = new Schema(
     reports: Schema.Types.Mixed, // { status, tests, room, at, readyAt, backAt }: tests the doctor asked for
     est: Schema.Types.Mixed, // { mins, at }: the wait we told them as they joined the line
     feedback: Schema.Types.Mixed, // { score, reasons, at, via }: "how was your visit?"
+    slip: Schema.Types.Mixed, // { status, printedAt, atRoomAt, copies }: the doctor's paper slip (phone registrations)
   },
   opts,
 )
@@ -93,6 +94,8 @@ const HospitalSchema = new Schema(
     autoRun: Boolean,
     arrival: Boolean,
     emergencyFee: Number,
+    emergencyPay: String,
+    slipMode: String,
     shareLoad: Boolean,
     counters: Schema.Types.Mixed,
     rooms: Schema.Types.Mixed,

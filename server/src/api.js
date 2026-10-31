@@ -38,6 +38,7 @@ const str = (v, max) => (typeof v === 'string' && v.length <= max ? v : '')
 const room = (a) => (roomNums.has(Number(a.room)) ? Number(a.room) : bad('room'))
 const id = (v) => (typeof v === 'string' && /^[a-z]\d{1,9}$/.test(v) ? v : bad('id'))
 const dept = (v) => (deptIds.has(v) ? v : bad('dept'))
+const ids = (v) => (Array.isArray(v) && v.length >= 1 && v.length <= 60 ? [...new Set(v.map(id))] : bad('pids'))
 
 // Only these actions can be called, and only with clean values.
 const ACTIONS = {
@@ -104,8 +105,13 @@ const ACTIONS = {
   setShareLoad: (a) => ({ on: !!a.on }),
   setEmergencyFee: (a) => {
     const amount = Number(a.amount)
-    return Number.isInteger(amount) && amount >= 0 && amount <= 5000 ? { amount } : bad('amount')
+    if (!Number.isInteger(amount) || amount < 0 || amount > 5000) bad('amount')
+    if (a.when != null && !['after', 'before'].includes(a.when)) bad('when')
+    return { amount, ...(a.when ? { when: a.when } : {}) }
   },
+  printSlips: (a) => ({ pids: ids(a.pids) }),
+  slipsToRoom: (a) => ({ pids: ids(a.pids) }),
+  setSlipMode: (a) => (['counter', 'room', 'window'].includes(a.mode) ? { mode: a.mode } : bad('mode')),
   // Name, age and gender may be unknown in an emergency.
   recordEmergency: (a) => {
     const age = a.age === '' || a.age == null ? null : Number(a.age)

@@ -19,6 +19,9 @@
 //     Emergency; nearby hospitals only when busy; today's impact counts.
 // 13. After the doctor: back with test reports near the front, the wait we
 //     promised against the real one, and "how was your visit?".
+// 14. Paper slips for people who registered on a phone (printed at the
+//     counter, at the room or at a slip window), and an Emergency slip fee
+//     taken before the doctor.
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -50,7 +53,7 @@ import { loadShare, nearbyWait, BUSY_HERE } from '../client/src/lib/nearby.js'
 import { NEARBY } from '../client/src/data/nearby.js'
 import { impactToday, estimateAccuracy, feedbackSummary } from '../client/src/lib/impact.js'
 import { RETURN_AFTER } from '../client/src/lib/engine.js'
-import { joinKind, reportsState } from '../client/src/lib/queue.js'
+import { joinKind, reportsState, slipsToPrint, slipState } from '../client/src/lib/queue.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 let failures = 0
@@ -665,6 +668,59 @@ section('13. Back with reports, promised waits, feedback')
   if (Object.keys(w.history).length) fail('sample visits never change consultation times')
   if (impactToday(s).backWithReports !== 1) fail('impact: back with reports')
   console.log(`  back with reports after ${RETURN_AFTER} people, same day; one answer per visit; sample day ${acc.within5}/${acc.total} on time, ${fb.n} answers`)
+}
+
+// 14. Paper slips, and the Emergency slip fee ------------------------------------
+section('14. Paper slips for the doctor, and the Emergency slip fee')
+{
+  const s = initialState()
+  const reg = (a) => runAction(s, 'registerPatient', { gender: 'f', lang: 'hi', dept: 'MED', age: 30, ...a }).result
+  const desk = reg({ name: 'Desk', via: 'counter' })
+  const booked = reg({ name: 'Booked' })
+  const here = reg({ name: 'Here', here: true })
+  const ent = reg({ name: 'Ent', here: true, dept: 'ENT' })
+  if (s.patients[desk.id].slip || s.patients[booked.id].slip?.status !== 'due' || slipState(s.patients[booked.id]) !== null) fail('only phone registrations need a printed slip, once in the line')
+  if (slipsToPrint(s).map((x) => x.p.id).join() !== [ent.id, here.id].join()) fail('slips to print: soonest first, bookings not yet')
+  if (slipsToPrint(s, 'MED').length !== 1) fail('slips to print for one doctor')
+  runAction(s, 'callNext', { room: 1 })
+  runAction(s, 'callNext', { room: 2 })
+  if (s.patients[here.id].status !== 'called' || slipsToPrint(s)[0].p.id !== here.id) fail('called without a slip: first in the list')
+  // Printed at the counter, then taken to the room.
+  if (runAction(s, 'printSlips', { pids: [here.id, ent.id, desk.id, booked.id] }).result !== 2) fail('prints only phone slips in the line')
+  if (s.patients[here.id].slip.status !== 'printed' || s.messages.some((m) => m.kind === 'slipAtRoom')) fail('printed at the counter: not at the room yet')
+  const r14 = runAction(s, 'slipsToRoom', { pids: [here.id] })
+  if (s.patients[here.id].slip.status !== 'atRoom' || s.messages[0].kind !== 'slipAtRoom' || !r14.events.some((e) => e.type === 'slip_at_room')) fail('taken to the room: the patient is told')
+  if (runAction(s, 'slipsToRoom', { pids: [here.id] }).result !== 0) fail('taking a slip twice does nothing')
+  // Printed at the doctor's room: there at once.
+  runAction(s, 'setSlipMode', { mode: 'room' })
+  const atRoom = reg({ name: 'Room', here: true })
+  runAction(s, 'printSlips', { pids: [atRoom.id] })
+  if (s.patients[atRoom.id].slip.status !== 'atRoom' || s.messages[0].kind !== 'slipAtRoom') fail('printed at the room: with the doctor at once')
+  // At the slip window: the patient takes it; printing again counts copies.
+  runAction(s, 'setSlipMode', { mode: 'window' })
+  const win = reg({ name: 'Window', here: true })
+  runAction(s, 'printSlips', { pids: [win.id] })
+  runAction(s, 'printSlips', { pids: [win.id] })
+  if (s.patients[win.id].slip.status !== 'given' || s.patients[win.id].slip.copies !== 2 || s.messages.some((m) => m.pid === win.id && m.kind === 'slipAtRoom')) fail('slip window: handed over, printed again on request')
+  // Moved to another doctor: a new token, so a new slip.
+  runAction(s, 'movePatient', { pid: ent.id, dept: 'CHD' })
+  if (s.patients[s.patients[ent.id].movedTo].slip?.status !== 'due') fail('moved: a new slip to print')
+  // The public queue knows where the slip is, not whose it is.
+  const pub = redactState(s).patients[here.id]
+  if (pub.slip?.status !== 'atRoom' || pub.name) fail('public: slip status only')
+  if (!can({ role: 'reception' }, 'printSlips') || can(null, 'printSlips') || can({ role: 'nurse' }, 'setSlipMode') || !can({ role: 'admin' }, 'setSlipMode')) fail('slip roles')
+  const before14 = JSON.parse(JSON.stringify(s))
+  runAction(s, 'setSlipMode', { mode: 'counter' })
+  if (diffState(before14, s).hospital?.slipMode !== 'counter') fail('the slip mode reaches every screen')
+  // Emergency slip fee, before the doctor.
+  const e = initialState()
+  runAction(e, 'setEmergencyFee', { amount: 20, when: 'before' })
+  runAction(e, 'setEmergencyFee', { amount: 30 })
+  if (e.emergencyFee !== 30 || e.emergencyPay !== 'before') fail('Emergency fee: amount and when')
+  const paid = runAction(e, 'recordEmergency', { name: 'X', age: 30, paidCash: true, lang: 'hi' }).result
+  const elder14 = runAction(e, 'recordEmergency', { age: 75, lang: 'hi' }).result
+  if (billSummary(e.patients[paid.id]).state !== 'paid' || billSummary(e.patients[elder14.id]).state !== 'free') fail('Emergency slip: paid at the counter, free care still applies')
+  console.log('  phone slips printed soonest first; counter → room, room printer, slip window; moves reprint; Emergency fee before the doctor')
 }
 
 console.log(failures ? `\n${failures} problem(s) found.` : '\nAll checks passed.')

@@ -139,6 +139,7 @@ export default function Home() {
           <ActionRow to="/find" icon="map" title={t('home.find')} sub={t('home.findSub')} />
           <ActionRow to="/plan" icon="calendar" title={t('home.plan')} sub={t('home.planSub')} />
           <ActionRow to="/ask" icon="mic" title={t('home.ask')} sub={t('home.askSub')} />
+          <ActionRow to="/board?view=phone" icon="tv" title={t('home.board')} sub={t('home.boardSub')} />
         </RowGroup>
       </section>
     </div>

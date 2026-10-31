@@ -127,6 +127,12 @@ export default function StaffLayout() {
                 {t('nav.counter')}
               </NavLink>
             ),
+            allowed('slips') && (
+              <NavLink key="s" to="/staff/slips" className={item}>
+                <Icon name="print" size={20} />
+                {t('nav.slips')}
+              </NavLink>
+            ),
             allowed('payments') && (
               <NavLink key="p" to="/staff/payments" className={item}>
                 <Icon name="rupee" size={20} />
@@ -172,6 +178,11 @@ export default function StaffLayout() {
             <a key="b" href="/board" target="_blank" rel="noreferrer" className={item({ isActive: false })}>
               <Icon name="tv" size={20} />
               <span className="flex-1">{t('nav.board')}</span>
+              <Icon name="external" size={16} className="text-ink-2" />
+            </a>,
+            <a key="g" href="/gate" target="_blank" rel="noreferrer" className={item({ isActive: false })}>
+              <Icon name="qr" size={20} />
+              <span className="flex-1">{t('nav.gate')}</span>
               <Icon name="external" size={16} className="text-ink-2" />
             </a>,
             <NavLink key="st" to="/stage" className={item}>

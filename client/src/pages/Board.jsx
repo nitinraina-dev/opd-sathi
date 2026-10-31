@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useHospital, useSimNow } from '../lib/store.js'
 import { translate } from '../i18n/index.js'
 import { departments } from '../data/departments.js'
@@ -11,9 +11,13 @@ import { doctorStatusText } from '../lib/text.js'
 import Icon from '../components/Icon.jsx'
 import { QRCode } from '../components/Slip.jsx'
 import { useCheckInCode, checkInUrl } from '../lib/checkin.js'
+import { useSettings } from '../lib/settings.js'
 
 // Waiting-room board for a TV. Switches between English and Hindi every
 // 10 seconds and reads each called token aloud in both languages.
+// /board?view=phone is the same board on a patient's phone, for anyone who
+// cannot get into (or see) the waiting room: in their own language, quiet
+// until they ask for sound, and without the join code (that is for the TV).
 // Phones that booked join the line by scanning this (it changes every 2 minutes).
 function CheckInPanel({ t }) {
   const v = useCheckInCode()
@@ -79,8 +83,10 @@ export default function Board() {
   const [params] = useSearchParams()
   // /board?autostart=1 skips the start screen (for a TV in kiosk mode; see README).
   const auto = params.get('autostart') === '1'
-  const [lang, setLang] = useState('en')
-  const [started, setStarted] = useState(auto)
+  const phone = params.get('view') === 'phone'
+  const [settings] = useSettings()
+  const [lang, setLang] = useState(phone ? settings.lang || 'en' : 'en')
+  const [started, setStarted] = useState(auto || phone)
   const [sound, setSound] = useState(auto)
   const [flash, setFlash] = useState({})
   const lastId = useRef(null)
@@ -89,9 +95,10 @@ export default function Board() {
   const t = (k, v) => translate(lang, k, v)
 
   useEffect(() => {
+    if (phone) return
     const id = setInterval(() => setLang((l) => (l === 'en' ? 'hi' : 'en')), 10000)
     return () => clearInterval(id)
-  }, [])
+  }, [phone])
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -116,8 +123,7 @@ export default function Board() {
     if (!sound) return
     for (const c of fresh) {
       const vars = { token: spokenToken(c.token), room: c.room }
-      queue.current.push({ text: translate('en', 'board.announce', vars), lang: 'en' })
-      queue.current.push({ text: translate('hi', 'board.announce', vars), lang: 'hi' })
+      for (const l of phone ? [lang] : ['en', 'hi']) queue.current.push({ text: translate(l, 'board.announce', vars), lang: l })
     }
     if (busy.current) return
     busy.current = true
@@ -172,14 +178,39 @@ export default function Board() {
 
       <div ref={fitRef}>
         <header className="flex flex-wrap items-center gap-4 border-b-4 border-[#ffe14d] px-6 py-4">
+          {phone && (
+            <Link to="/" className="flex min-h-12 items-center gap-1 rounded-xl border-2 border-white px-3 text-lg font-semibold text-white no-underline">
+              <Icon name="back" size={22} />
+              {t('common.back')}
+            </Link>
+          )}
           <Icon name="tv" size={44} />
           <div className="min-w-[min(100%,16rem)] flex-1">
             <h1 className="text-[clamp(1.6rem,3vw,3rem)] font-bold leading-tight">{t('board.title')}</h1>
             <p className="text-[clamp(1rem,1.6vw,1.6rem)] opacity-90">{t('app.hospital')}</p>
           </div>
-          {state.arrival !== false && <CheckInPanel t={t} />}
+          {state.arrival !== false && !phone && <CheckInPanel t={t} />}
           <p className="font-mono text-[clamp(2rem,4vw,4rem)] font-bold">{fmtTime(now)}</p>
-          <p className="rounded-full border-2 border-white px-4 py-1 text-xl font-semibold">{t('lang.self')}</p>
+          {phone ? (
+            <button
+              type="button"
+              aria-pressed={sound}
+              onClick={() => {
+                if (!sound) {
+                  unlockAudio()
+                  speak(' ', lang)
+                }
+                setSound(!sound)
+              }}
+              className="flex min-h-12 items-center gap-2 rounded-xl bg-[#ffe14d] px-3 text-lg font-bold text-black"
+            >
+              <Icon name={sound ? 'stop' : 'speaker'} size={22} />
+              {sound ? t('board.soundOff') : t('board.soundOn')}
+            </button>
+          ) : (
+            <p className="rounded-full border-2 border-white px-4 py-1 text-xl font-semibold">{t('lang.self')}</p>
+          )}
+          {phone && <p className="w-full text-lg">{t('board.phoneNote')}</p>}
         </header>
 
         <main className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-4">

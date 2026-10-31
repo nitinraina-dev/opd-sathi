@@ -4,14 +4,15 @@ A hackathon prototype for **City District Hospital** (a made-up government hospi
 
 - register in Hindi or English,
 - get an OPD slip with a token,
-- follow their place in the queue,
+- get the doctor's paper slip printed for them, without queueing at the counter for it,
+- follow their place in the queue, on their phone or on the waiting-room board from anywhere,
 - find the right room with step-by-step, landmark-based directions,
 - know when to go in,
 - come back with test reports and go in near the front, not at the end,
 - send their turn to family, who can follow it on their phone or on Telegram,
 - say how the visit went, with one tap or by SMS.
 
-Patients can pay the small OPD fee and any tests by UPI or in cash, and free-care groups never pay; payment never holds up a token or a doctor. Staff log in to a live dashboard, a registration counter, a payments desk and a waiting-room TV board. A crowd forecast uses weather, air quality, road traffic, the real queue and this hospital's own history. Phones get alerts even with the screen closed, and n8n can send real SMS and staff alerts.
+Patients can pay the small OPD fee and any tests by UPI or in cash, and free-care groups never pay; payment never holds up a token or a doctor. Staff log in to a live dashboard, a registration counter, a paper-slips screen, a payments desk, a waiting-room TV board and a gate screen with the join-the-line code. A crowd forecast uses weather, air quality, road traffic, the real queue and this hospital's own history. Phones get alerts even with the screen closed, and n8n can send real SMS and staff alerts.
 
 All hospital data and patients are made up. The app never asks for Aadhaar or ABHA numbers.
 
@@ -101,7 +102,8 @@ Keep `TZ=Asia/Kolkata` too (set in `render.yaml` and the `Dockerfile`). Hosting 
 - that "Avoid stairs" never uses stairs, and that every direction step renders in both languages,
 - the queue engine, the forecast model and what it learns from history (including separating rain from weekday effects),
 - staff roles, and that the public queue has no names or phone numbers,
-- payments: free care, card checks, UPI and cash, tests, part payments, refunds, moving a bill with the patient, and that an unpaid patient is still queued and called.
+- payments: free care, card checks, UPI and cash, tests, part payments, refunds, moving a bill with the patient, and that an unpaid patient is still queued and called,
+- paper slips for phone registrations (printed at the counter, at the room or at a slip window), and an Emergency slip fee taken before the doctor.
 
 ## The demo stage (for judges)
 
@@ -117,9 +119,10 @@ Keep `TZ=Asia/Kolkata` too (set in `render.yaml` and the `Dockerfile`). Hosting 
 
 - ten visits from earlier this morning: the wait each was told and the real one, feedback from eight of them, and one patient (Ramesh, MED-002) still at the tests,
 - a busy line, plus two phone bookings that haven't arrived yet,
+- four people who registered on a phone and are in the line: two paper slips to print, one printed at the counter and one already with the doctor,
 - four weeks of history, so the forecast has learned and the early warning shows,
 - a dengue alert, sample PM-JAY claims,
-- a ₹50 Emergency fee with two Emergency visits.
+- ₹20 for the Emergency slip, paid before the doctor (as at many government hospitals), with two Emergency visits.
 
 Offline it does what the browser can. A suggested 3-minute walkthrough:
 
@@ -128,7 +131,8 @@ Offline it does what the browser can. A suggested 3-minute walkthrough:
 3. **Board:** "Just arrived? Join the line" with the changing code. A booking only joins the line here.
 4. **Dashboard:** "Tomorrow looks very busy", the dengue alert, nearby hospitals. Switch on *Doctors call on their own* and *Speed time up 10x* to watch the line move.
 5. **Dashboard → How we did today:** how many waits came true within 5 minutes of what we told people, and the day's feedback. Under General Medicine, **At tests** shows Ramesh: tap *Back with reports* and he goes in after 2 people, not at the end. Text his token on the basic phone, and after the doctor sees him, reply `1`.
-6. **Staff → Forecast:** busy days ahead, local news suggestions, the early warning, what the forecast learned. **Emergency desk** and **PM-JAY claims** show the rest.
+6. **Staff → Paper slips:** press *Print all* (each slip prints on its own page), then *Taken to the room*. On the patient's phone, *My turn* now says "Your paper slip is with the doctor".
+7. **Staff → Forecast:** busy days ahead, local news suggestions, the early warning, what the forecast learned. **Emergency desk** and **PM-JAY claims** show the rest.
 
 ## Two-minute demo (by hand)
 
@@ -194,6 +198,8 @@ A token from a phone used to go straight into the line. Someone at home could ho
   - Scanning the code *before* registering on a phone joins the line straight away.
   - Bookings are for the same day.
   - Only logged-in staff screens can get the code. Open the waiting-room board from the staff menu.
+  - **The waiting room may be full, upstairs or behind a guard.** **Staff → Gate screen** (`/gate`) shows only the code, in English and Hindi, sized for an old phone or tablet at the gate, the guard's desk or the help desk. It keeps the screen awake where the browser allows. Like the board, it needs a staff login once.
+  - **Nobody has to sit in the waiting room.** *My turn* says to wait anywhere, and **Watch the waiting-room board** (on Home and *My turn*, `/board?view=phone`) shows the board on the phone, in the patient's language, quiet until they ask for sound, without the join code.
 - **Missed your turn?** After a no-show, the person checks in again the same way and goes to the end of the line.
 - **Limits.**
   - One open token per phone per department (a phone id kept in a cookie).
@@ -207,9 +213,24 @@ A token from a phone used to go straight into the line. Someone at home could ho
   - Nothing here holds up care: an unconfirmed person still sees the doctor, and Emergency never waits.
 - **For a quick demo,** an admin can switch off *Phones join the line only at the hospital* in Demo controls.
 
+## The doctor's paper slip
+
+The doctor writes the prescription on the hospital's paper OPD slip. A token on a phone gets someone into the line, but without the paper they would still queue at the counter for it. So the paper goes to the doctor; the patient never goes to the counter for it.
+
+- **Who needs one.** Everyone who registered on a phone (the counter hands its slip over at once). Moving to another doctor makes a new token, so a new slip.
+- **Staff → Paper slips** (`/staff/slips`, any desk role) lists the slips to print, soonest first. Anyone already called is at the top in red: the doctor is waiting for it. *Print all* prints them one per page: hospital, token, name, age and sex, department, room and doctor, the fee (paid with its receipt number, free, or due), and ruled space for the doctor's notes.
+- **How a slip reaches the doctor** (admin chooses, on the same screen):
+  - **Printed here, taken to the room** (the default). Print in batches between patients; *Printed: take to the room* groups them by room, and *Taken to the room* tells each patient.
+  - **Printed at the doctor's room.** The computer at the nurse's table picks its doctor and turns on *Print by itself when the patient is 3 away*. To skip the print box, start Chrome there with `--kiosk-printing`.
+  - **Collected at a slip window.** Patients show their phone at a slip-only window: type the token or scan their QR code, then *Print*. No form and no fee, so it takes seconds.
+- **The patient sees** where their slip is on *My turn* and the slip: on its way, with the doctor ("You do not need to stand in the counter line for it"), or to collect at the window, with directions. When it reaches the room they get a message (on screen, and on Telegram if they follow the token).
+- **A lost slip:** find the token on the same screen and *Print again*. The paper says which copy it is.
+- **The dashboard** shows each phone patient's slip: *No paper slip yet*, *Slip at the counter*, *Slip at the room* or *Has the slip*.
+- **In a real hospital** the slip carries the hospital's own registration number (UHID) from its own system. There, OPD Saathi would send the details to that system and only trigger the print.
+
 ## Payments
 
-Payment is built so it can **never hold up care**. Every patient gets a token, doctors can call anyone, and Emergency never asks for money.
+Payment is built so it can **never hold up an OPD visit**. Every patient gets a token, and doctors can call anyone. Emergency fees are below.
 
 **Fees and free care** (sample values in `client/src/data/fees.js`):
 
@@ -217,12 +238,13 @@ Payment is built so it can **never hold up care**. Every patient gets a token, d
 - **Free without a card:** people aged 60 and over, children under 5, and pregnancy care (Women and pregnancy). At the counter this counts at once. Typed into a phone, staff confirm it first (see *Keeping the line fair*).
 - **Free with a card that staff see at the counter:** ration card (BPL/Antyodaya), Ayushman Bharat (PM-JAY), or a disability certificate. The app never asks for or stores the card number.
 
-**Emergency visits (optional fee).** Government hospitals usually don't charge for Emergency, but some hospitals do.
-- **Setting the fee.** An admin sets it at **Staff → Emergency desk → Emergency visit fee**. It is ₹0 (free) by default.
-- **Billing after care.** The fee is billed **after care, never before**. Staff record the visit on the Emergency desk once the patient is being looked after; name and age can stay empty. They take the fee then or later, or note a free-care card.
+**Emergency visits (optional fee).** Many government hospitals charge a small fee, such as ₹20, for the Emergency slip, and take it before the doctor sees the patient. Others charge after care, or nothing.
+- **Setting the fee.** An admin sets the amount, and whether it is paid **after care** or **before the doctor (the Emergency slip)**, at **Staff → Emergency desk → Emergency visit fee**. It is ₹0 (free) by default.
+- **After care.** Staff record the visit on the Emergency desk once the patient is being looked after; name and age can stay empty. They take the fee then or later, or note a free-care card.
+- **Before the doctor.** Staff make the slip on the same desk, with *Cash received now* chosen. The desk reminds them that someone very ill goes in first and settles the bill later.
 - **Free care still applies.** Age 60 or over, under 5, or a card staff have seen.
 - **Kept out of the OPD.** Emergency visits (tokens `EMR-001`…) are never in an OPD line or on the board.
-- **What patients see.** Their Emergency screen says the fee is paid later and nobody is turned away.
+- **What patients see.** After care: the fee is paid later and nobody is turned away. Before the doctor: what the Emergency slip costs, to keep it ready in cash or UPI, who gets it free, and "if the person is very ill, tell the staff at once". The app says what the hospital actually does.
 - **PM-JAY.** An Emergency patient can be admitted under PM-JAY from the claims page.
 
 **For patients:**
@@ -449,7 +471,7 @@ To set them up:
 
 The Express server sends the events, so the browser never needs CORS. Only patients who typed a mobile number get SMS; sample patients have none.
 
-**Events sent:** `registered`, `turn_near`, `token_called`, `no_show`, `sent_to_end`, `moved`, `doctor_status`, `urgent_flag`, `flag_seen`, `demo_patients_added`, `checked_in`, `reports_ready`, `back_with_reports`, `feedback`, `test`.
+**Events sent:** `registered`, `turn_near`, `token_called`, `no_show`, `sent_to_end`, `moved`, `doctor_status`, `urgent_flag`, `flag_seen`, `demo_patients_added`, `checked_in`, `reports_ready`, `back_with_reports`, `feedback`, `slip_at_room`, `test`.
 
 ## API
 
@@ -480,7 +502,9 @@ The Express server sends the events, so the browser never needs CORS. Only patie
 | `POST /api/actions/reportsReady` | any staff | test reports are ready to collect (a message to the patient) |
 | `POST /api/feedback` | the patient's own phone | `{ pid, secret, score, reasons }`: "how was your visit?", once, after the doctor |
 | `GET /api/telegram` | anyone | `{ bot }`: the Telegram bot's username, for "Alerts on Telegram" links (null without `TELEGRAM_BOT_TOKEN`) |
-| `POST /api/actions/recordEmergency`, `setEmergencyFee` | staff / admin | an Emergency visit (after care) and its fee |
+| `POST /api/actions/recordEmergency`, `setEmergencyFee` | staff / admin | an Emergency visit, and its fee: `{ amount, when }`, `when` is `after` (care) or `before` (the Emergency slip) |
+| `POST /api/actions/printSlips`, `slipsToRoom` | any staff | `{ pids }`: paper slips printed; printed slips taken to the doctor's room |
+| `POST /api/actions/setSlipMode` | admin | `{ mode }`: `counter`, `room` or `window` (how paper slips reach the doctor) |
 | `POST /api/actions/checkIn`, `setArrival`, `setShareLoad` | staff / admin | check someone in at the counter; turn the arrival rule, or the nearby-hospital suggestion, on or off |
 | `GET /api/claims`, `POST /api/claims`, `POST /api/claims/:id/step` | staff (see roles above) | PM-JAY claims: list, admit, record a step |
 | `POST/DELETE /api/claims/sample` | admin | made-up claims for a demo |
@@ -520,6 +544,7 @@ The Express server sends the events, so the browser never needs CORS. Only patie
   - Without a key, word matching answers in English, Hindi and Hinglish (logic checks).
 - **SMS.** API checks for the gateway key, token status (no names), KAHAN in Hindi, urgent words, and IN only from the slip's number with the screen code. Workflow 4 ran in n8n end to end: a Twilio-style text came back as TwiML.
 - **Demo setup and the stage:** one click from the stage in the browser (server and offline), the basic phone's replies, and the API checks for what setup creates.
+- **Paper slips, the gate screen and the board on a phone** (2026-10-31), against a real server with a throwaway database: demo setup, *Print all*, *Taken to the room*, wrong input refused, not logged in refused, the public queue showing a slip's status but no name, the activity log, and everything still there after a restart. Screenshots in headless Chrome of the Slips screen, *My turn*, the gate screen, the board on a phone, the Emergency page and desk; printed to PDF at A5, one slip per page in English and Hindi. Not yet tried on a real printer, or with `--kiosk-printing`.
 - **API checks** for Emergency visits:
   - free by default; when a fee is set, it's billed after care
   - free care applies, and paying gives a receipt
